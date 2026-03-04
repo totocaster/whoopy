@@ -44,8 +44,8 @@ type Recovery struct {
 // RecoveryScore represents the physiological metrics returned by WHOOP.
 type RecoveryScore struct {
 	UserCalibrating  bool     `json:"user_calibrating"`
-	RecoveryScore    *int     `json:"recovery_score,omitempty"`
-	RestingHeartRate *int     `json:"resting_heart_rate,omitempty"`
+	RecoveryScore    *float64 `json:"recovery_score,omitempty"`
+	RestingHeartRate *float64 `json:"resting_heart_rate,omitempty"`
 	HRVRMSSDMilli    *float64 `json:"hrv_rmssd_milli,omitempty"`
 	RespiratoryRate  *float64 `json:"respiratory_rate,omitempty"`
 	Spo2Percentage   *float64 `json:"spo2_percentage,omitempty"`
@@ -109,8 +109,8 @@ type recoveryRecord struct {
 
 type recoveryScore struct {
 	UserCalibrating  bool     `json:"user_calibrating"`
-	RecoveryScore    *int     `json:"recovery_score"`
-	RestingHeartRate *int     `json:"resting_heart_rate"`
+	RecoveryScore    *float64 `json:"recovery_score"`
+	RestingHeartRate *float64 `json:"resting_heart_rate"`
 	HRVRMSSDMilli    *float64 `json:"hrv_rmssd_milli"`
 	RespiratoryRate  *float64 `json:"respiratory_rate"`
 	Spo2Percentage   *float64 `json:"spo2_percentage"`

@@ -22,8 +22,8 @@ func TestRecoveryListJSONOutput(t *testing.T) {
 					SleepID:   "sleep-1",
 					CreatedAt: time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
 					Score: recovery.RecoveryScore{
-						RecoveryScore:    intPtr(82),
-						RestingHeartRate: intPtr(46),
+						RecoveryScore:    floatPtr(82),
+						RestingHeartRate: floatPtr(46),
 					},
 				},
 			},
@@ -46,8 +46,8 @@ func TestRecoveryViewTextOutput(t *testing.T) {
 			SleepID:    "sleep-10",
 			ScoreState: "SCORED",
 			Score: recovery.RecoveryScore{
-				RecoveryScore:    intPtr(90),
-				RestingHeartRate: intPtr(44),
+				RecoveryScore:    floatPtr(90),
+				RestingHeartRate: floatPtr(44),
 				HRVRMSSDMilli:    floatPtr(110.0),
 				UserCalibrating:  true,
 			},

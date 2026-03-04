@@ -26,8 +26,8 @@ func TestServiceListParsesRecovery(t *testing.T) {
 				UpdatedAt:  "2026-03-04T00:10:00Z",
 				Score: &recoveryScore{
 					UserCalibrating:  true,
-					RecoveryScore:    intPtr(75),
-					RestingHeartRate: intPtr(42),
+					RecoveryScore:    floatPtr(75),
+					RestingHeartRate: floatPtr(42),
 					HRVRMSSDMilli:    floatPtr(110.5),
 				},
 			},
@@ -46,7 +46,7 @@ func TestServiceListParsesRecovery(t *testing.T) {
 	rec := result.Recoveries[0]
 	require.Equal(t, int64(100), rec.CycleID)
 	require.Equal(t, "sleep-1", rec.SleepID)
-	require.Equal(t, 75, *rec.Score.RecoveryScore)
+	require.Equal(t, 75.0, *rec.Score.RecoveryScore)
 	require.True(t, rec.Score.UserCalibrating)
 }
 
@@ -80,6 +80,5 @@ func (f *fakeClient) GetJSON(ctx context.Context, path string, query url.Values,
 	return json.Unmarshal(data, dest)
 }
 
-func intPtr(v int) *int           { return &v }
 func int64Ptr(v int64) *int64     { return &v }
 func floatPtr(v float64) *float64 { return &v }

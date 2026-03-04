@@ -121,8 +121,8 @@ func formatRecoveryText(result *recovery.ListResult) string {
 	for _, rec := range result.Recoveries {
 		fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			rec.CycleID,
-			formatIntPtr(rec.Score.RecoveryScore),
-			formatIntPtr(rec.Score.RestingHeartRate),
+			formatFloatPtr(rec.Score.RecoveryScore, 0),
+			formatFloatPtr(rec.Score.RestingHeartRate, 0),
 			formatFloatPtr(rec.Score.HRVRMSSDMilli, 1),
 			formatFloatPtr(rec.Score.RespiratoryRate, 1),
 			formatBool(rec.Score.UserCalibrating),
@@ -147,8 +147,8 @@ func formatRecoveryDetailText(rec *recovery.Recovery) string {
 	}
 	fmt.Fprintf(&b, "Sleep ID: %s\n", safeValue(rec.SleepID))
 	fmt.Fprintf(&b, "State: %s\n", safeValue(rec.ScoreState))
-	fmt.Fprintf(&b, "Recovery Score: %s\n", formatIntPtr(rec.Score.RecoveryScore))
-	fmt.Fprintf(&b, "Resting HR: %s bpm\n", formatIntPtr(rec.Score.RestingHeartRate))
+	fmt.Fprintf(&b, "Recovery Score: %s\n", formatFloatPtr(rec.Score.RecoveryScore, 0))
+	fmt.Fprintf(&b, "Resting HR: %s bpm\n", formatFloatPtr(rec.Score.RestingHeartRate, 0))
 	fmt.Fprintf(&b, "HRV (rmssd): %s ms\n", formatFloatPtr(rec.Score.HRVRMSSDMilli, 1))
 	fmt.Fprintf(&b, "Respiratory Rate: %s br/min\n", formatFloatPtr(rec.Score.RespiratoryRate, 1))
 	fmt.Fprintf(&b, "SpO₂: %s %%\n", formatPercent(rec.Score.Spo2Percentage))
