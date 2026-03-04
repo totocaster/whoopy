@@ -49,6 +49,13 @@ func formatInt64Ptr(value *int64) string {
 	return fmt.Sprintf("%d", *value)
 }
 
+func formatBool(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
+}
+
 func formatDuration(start, end time.Time) string {
 	dur := end.Sub(start)
 	if start.IsZero() || end.IsZero() || dur <= 0 {
@@ -69,4 +76,14 @@ func formatDuration(start, end time.Time) string {
 	default:
 		return fmt.Sprintf("%ds", seconds)
 	}
+}
+
+func formatMillisDuration(value *int64) string {
+	if value == nil || *value <= 0 {
+		return "n/a"
+	}
+	dur := time.Duration(*value) * time.Millisecond
+	hours := int(dur.Hours())
+	minutes := int(dur.Minutes()) % 60
+	return fmt.Sprintf("%dh%02dm", hours, minutes)
 }

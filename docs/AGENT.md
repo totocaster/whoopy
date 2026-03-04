@@ -11,8 +11,8 @@
 - Auth stack complete (`whoopy auth login|status|logout`) with persisted tokens + auto-refresh.
 - Core API client + shared list plumbing ready; profile summary implemented.
 - Workouts service + CLI (`whoopy workouts list/view`, JSON + `--text`) now include client-side filters (`--sport`, `--min-strain`, `--max-strain`) while hitting `/developer/v2/activity/workout`.
-- Cycles service + CLI (`whoopy cycles list/view`) implemented with identical pagination + text rendering patterns.
-- Next up: recovery/sleep commands and the aggregated `stats` surface.
+- Cycles, recovery, and sleep services/CLI pairs (`whoopy cycles|recovery|sleep list/view`) implemented with shared pagination + formatting.
+- Next up: aggregated `stats` surface and the remaining specialized helpers (diag/export).
 
 ## Testing Checklist
 - `go test ./...` before every commit.

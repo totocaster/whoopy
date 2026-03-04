@@ -139,7 +139,3 @@ func TestWorkoutsViewTextOutput(t *testing.T) {
 	require.Contains(t, output, "Avg HR: 145")
 	require.Contains(t, output, "Strain: 11.2")
 }
-
-func intPtr(v int) *int { return &v }
-
-func floatPtr(v float64) *float64 { return &v }

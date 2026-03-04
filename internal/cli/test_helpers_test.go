@@ -58,3 +58,9 @@ func resetCommandFlags(cmd *cobra.Command) {
 		resetCommandFlags(child)
 	}
 }
+
+func intPtr(v int) *int { return &v }
+
+func floatPtr(v float64) *float64 { return &v }
+
+func int64Ptr(v int64) *int64 { return &v }
