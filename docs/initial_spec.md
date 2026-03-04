@@ -139,7 +139,7 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Use Go 1.22+ modules; `make build|test|install` remain the local dev loop.
 - GoReleaser (`.goreleaser.yml`) builds macOS+Linux (amd64/arm64), injects `main.version/commit/date` ldflags, creates universal macOS binaries, and uploads tarballs + checksums to GitHub Releases.
 - GitHub Actions workflow `.github/workflows/release.yml` mirrors stamp: trigger on `v*` tags, run `go test ./...`, then invoke GoReleaser. Attach artifacts even if the Homebrew tap token is missing.
-- Homebrew-only distribution for now. The GoReleaser `brews` stanza pushes updates to `totocaster/homebrew-tap/Formula/whoopy.rb` using the `HOMEBREW_TAP_TOKEN` secret. `Formula/whoopy.rb` in this repo is a template and reference for that tap.
+- Homebrew-only distribution for now. The GoReleaser `brews` stanza pushes updates directly to `totocaster/homebrew-tap/Formula/whoopy.rb` using the `HOMEBREW_TAP_TOKEN` secret (no local formula copy needed).
 - Release ritual documented in `RELEASE_SETUP.md`: ensure main is green, tag `vX.Y.Z`, push tag, confirm release assets + tap update, and test `brew install whoopy`.
 - Future: consider Windows builds or additional package managers once macOS/Linux are stable.
 
