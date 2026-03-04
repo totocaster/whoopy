@@ -13,7 +13,8 @@
 - Core API client + shared list plumbing ready; profile summary implemented.
 - Workouts service + CLI (`whoopy workouts list/view`, JSON + `--text`) now include client-side filters (`--sport`, `--min-strain`, `--max-strain`) while hitting `/developer/v2/activity/workout`.
 - Cycles, recovery, and sleep services/CLI pairs (`whoopy cycles|recovery|sleep list/view`) implemented with shared pagination + formatting.
-- Next up: aggregated `stats` surface and the remaining specialized helpers (diag/export).
+- Stats aggregation landed (`whoopy stats daily --date …`) producing JSON/text dashboards by composing cycles/recovery/sleep/workouts.
+- Next up: diagnostics/export tooling and polish around release packaging.
 
 ## Testing Checklist
 - `go test ./...` before every commit.
