@@ -41,8 +41,9 @@
 - Foundational unit tests in place for config loading, token storage, and OAuth flow helpers (PKCE generation, token exchange/refresh/logout).
 - Core WHOOP API client implemented (token injection, auto-refresh, 401 retry, 429 backoff, JSON helper) to power upcoming commands.
 - `whoopy profile show` implemented (JSON by default, `--text` for human-readable) fetching `/user/profile/basic` and `/user/measurement/body`.
-- `whoopy workouts list` implemented with shared pagination flags, default JSON output (`workouts` array + `next_token`), and `--text` tables showing start time, duration, sport, strain, and avg HR. Data comes from `GET /developer/v2/workout`, pulling the documented score metrics (strain, HR, distances, zone durations) exposed by WHOOP’s official schema. Reference: https://developer.whoop.com/api#tag/Workout/operation/getWorkoutCollection.
+- `whoopy workouts list` implemented with shared pagination flags, default JSON output (`workouts` array + `next_token`), and `--text` tables showing start time, duration, sport, strain, and avg HR. Client-side filters `--sport`, `--min-strain`, and `--max-strain` narrow the displayed workouts without changing server pagination. Data comes from `GET /developer/v2/workout`, pulling the documented score metrics (strain, HR, distances, zone durations) exposed by WHOOP’s official schema. Reference: https://developer.whoop.com/api#tag/Workout/operation/getWorkoutCollection.
 - `whoopy workouts view <id>` implemented to call `GET /developer/v2/workout/{id}` and render either the raw JSON object or a detailed text summary (start/duration, state, strain, HR, kJ, distance, percent recorded, zone splits). This shares the same service + formatting helpers as the list command so future consumers get consistent schemas across both commands.
+- `whoopy cycles list` / `whoopy cycles view <id>` implemented against `GET /developer/v2/cycle` and `GET /developer/v2/cycle/{id}`. Lists honor the shared pagination flags plus `--text` output, showing start date, duration, strain, and heart-rate metrics. Detail view surfaces timestamps, strain, kJ, heart rates, and timezone offset in both JSON and text formats. Reference: https://developer.whoop.com/api#tag/Cycle/operation/getCycleCollection.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
@@ -81,8 +82,11 @@ whoopy recovery list [--days N | --start --end]
 whoopy sleep today
 whoopy sleep list [--start --end] [--limit N]
 
-whoopy workouts list [--start --end] [--sport SPORT_ID] [--limit N]
+whoopy workouts list [--start --end] [--limit N] [--sport NAME|ID] [--min-strain F] [--max-strain F]
 whoopy workouts view <workout-id>
+
+whoopy cycles list [--start --end] [--limit N]
+whoopy cycles view <cycle-id>
 
 whoopy stats daily --date YYYY-MM-DD [--text|--json]
 ```
