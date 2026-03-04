@@ -21,9 +21,11 @@ var (
 func init() {
 	rootCmd.AddCommand(sleepCmd)
 	sleepCmd.AddCommand(sleepListCmd)
+	sleepCmd.AddCommand(sleepTodayCmd)
 	sleepCmd.AddCommand(sleepViewCmd)
 	addListFlags(sleepListCmd)
 	sleepListCmd.Flags().Bool("text", false, "Human-readable output")
+	sleepTodayCmd.Flags().Bool("text", false, "Human-readable output")
 	sleepViewCmd.Flags().Bool("text", false, "Human-readable output")
 }
 
@@ -43,6 +45,32 @@ var sleepListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		textMode, err := cmd.Flags().GetBool("text")
+		if err != nil {
+			return err
+		}
+		result, err := sleepListFn(cmd.Context(), opts)
+		if err != nil {
+			return err
+		}
+		if textMode {
+			fmt.Fprintln(cmd.OutOrStdout(), formatSleepListText(result))
+			return nil
+		}
+		payload, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(payload))
+		return nil
+	},
+}
+
+var sleepTodayCmd = &cobra.Command{
+	Use:   "today",
+	Short: "Show today's sleep sessions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		opts := todayRangeOptions(25)
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -117,12 +145,12 @@ func formatSleepListText(result *sleep.ListResult) string {
 	}
 	var b strings.Builder
 	tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-    fmt.Fprintln(tw, "Start\tDuration\tPerf%\tResp\tNap\tID")
+	fmt.Fprintln(tw, "Start\tDuration\tPerf%\tResp\tNap\tID")
 	for _, sess := range result.Sleeps {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			formatTimestamp(sess.Start),
 			formatDuration(sess.Start, sess.End),
-            formatFloatPtr(sess.Score.SleepPerformancePercentage, 1),
+			formatFloatPtr(sess.Score.SleepPerformancePercentage, 1),
 			formatFloatPtr(sess.Score.RespiratoryRate, 1),
 			formatBool(sess.Nap),
 			sess.ID,
@@ -147,8 +175,8 @@ func formatSleepDetailText(sess *sleep.Session) string {
 	fmt.Fprintf(&b, "End: %s\n", formatTimestamp(sess.End))
 	fmt.Fprintf(&b, "Duration: %s\n", formatDuration(sess.Start, sess.End))
 	fmt.Fprintf(&b, "Nap: %s\n", formatBool(sess.Nap))
-    fmt.Fprintf(&b, "Performance: %s %%\n", formatFloatPtr(sess.Score.SleepPerformancePercentage, 1))
-    fmt.Fprintf(&b, "Consistency: %s %%\n", formatFloatPtr(sess.Score.SleepConsistencyPercentage, 1))
+	fmt.Fprintf(&b, "Performance: %s %%\n", formatFloatPtr(sess.Score.SleepPerformancePercentage, 1))
+	fmt.Fprintf(&b, "Consistency: %s %%\n", formatFloatPtr(sess.Score.SleepConsistencyPercentage, 1))
 	fmt.Fprintf(&b, "Respiratory Rate: %s br/min\n", formatFloatPtr(sess.Score.RespiratoryRate, 1))
 	fmt.Fprintf(&b, "Efficiency: %s %%\n", formatFloatPtr(sess.Score.SleepEfficiencyPercentage, 1))
 	fmt.Fprintf(&b, "Stage Summary:\n")

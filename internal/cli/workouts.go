@@ -2,11 +2,15 @@ package cli
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -28,13 +32,25 @@ const (
 func init() {
 	rootCmd.AddCommand(workoutsCmd)
 	workoutsCmd.AddCommand(workoutsListCmd)
+	workoutsCmd.AddCommand(workoutsTodayCmd)
 	workoutsCmd.AddCommand(workoutsViewCmd)
+	workoutsCmd.AddCommand(workoutsExportCmd)
 	addListFlags(workoutsListCmd)
 	workoutsListCmd.Flags().Bool("text", false, "Human-readable output")
 	workoutsListCmd.Flags().String(workoutFlagSport, "", "Filter workouts by sport name or ID (client-side filter)")
 	workoutsListCmd.Flags().Float64(workoutFlagMinStrain, 0, "Minimum strain (inclusive)")
 	workoutsListCmd.Flags().Float64(workoutFlagMaxStrain, 0, "Maximum strain (inclusive)")
 	workoutsViewCmd.Flags().Bool("text", false, "Human-readable output")
+	workoutsTodayCmd.Flags().Bool("text", false, "Human-readable output")
+	workoutsTodayCmd.Flags().String(workoutFlagSport, "", "Filter workouts by sport name or ID (client-side filter)")
+	workoutsTodayCmd.Flags().Float64(workoutFlagMinStrain, 0, "Minimum strain (inclusive)")
+	workoutsTodayCmd.Flags().Float64(workoutFlagMaxStrain, 0, "Maximum strain (inclusive)")
+	workoutsExportCmd.Flags().String("format", "jsonl", "Export format: jsonl or csv")
+	workoutsExportCmd.Flags().String("output", "-", "Output path ('-' for stdout)")
+	workoutsExportCmd.Flags().String(workoutFlagSport, "", "Filter workouts by sport name or ID (client-side filter)")
+	workoutsExportCmd.Flags().Float64(workoutFlagMinStrain, 0, "Minimum strain (inclusive)")
+	workoutsExportCmd.Flags().Float64(workoutFlagMaxStrain, 0, "Maximum strain (inclusive)")
+	addListFlags(workoutsExportCmd)
 }
 
 var workoutsCmd = &cobra.Command{
@@ -53,6 +69,39 @@ var workoutsListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		filters, err := parseWorkoutFilters(cmd)
+		if err != nil {
+			return err
+		}
+		textMode, err := cmd.Flags().GetBool("text")
+		if err != nil {
+			return err
+		}
+		result, err := workoutsListFn(cmd.Context(), opts)
+		if err != nil {
+			return err
+		}
+		if result != nil {
+			result.Workouts = filterWorkouts(result.Workouts, filters)
+		}
+		if textMode {
+			fmt.Fprintln(cmd.OutOrStdout(), formatWorkoutsText(result))
+			return nil
+		}
+		payload, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(payload))
+		return nil
+	},
+}
+
+var workoutsTodayCmd = &cobra.Command{
+	Use:   "today",
+	Short: "List today's workouts quickly",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		opts := todayRangeOptions(25)
 		filters, err := parseWorkoutFilters(cmd)
 		if err != nil {
 			return err
@@ -105,6 +154,30 @@ var workoutsViewCmd = &cobra.Command{
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(payload))
 		return nil
+	},
+}
+
+var workoutsExportCmd = &cobra.Command{
+	Use:   "export",
+	Short: "Export workouts over a date range",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		opts, err := parseListOptions(cmd)
+		if err != nil {
+			return err
+		}
+		filters, err := parseWorkoutFilters(cmd)
+		if err != nil {
+			return err
+		}
+		format, err := cmd.Flags().GetString("format")
+		if err != nil {
+			return err
+		}
+		outputPath, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return err
+		}
+		return exportWorkouts(cmd.Context(), opts, filters, format, outputPath, cmd.OutOrStdout())
 	},
 }
 
@@ -290,4 +363,113 @@ func matchesSportQuery(query string, w workouts.Workout) bool {
 
 func float64Ptr(v float64) *float64 {
 	return &v
+}
+
+func exportWorkouts(ctx context.Context, baseOpts *api.ListOptions, filters workoutFilters, format, outputPath string, stdout io.Writer) error {
+	if strings.TrimSpace(format) == "" {
+		format = "jsonl"
+	}
+	format = strings.ToLower(strings.TrimSpace(format))
+
+	writer := stdout
+	var file *os.File
+	if out := strings.TrimSpace(outputPath); out != "" && out != "-" {
+		var err error
+		file, err = os.Create(out)
+		if err != nil {
+			return fmt.Errorf("open export output: %w", err)
+		}
+		defer file.Close()
+		writer = file
+	}
+
+	switch format {
+	case "jsonl":
+		return exportWorkoutsJSONL(ctx, baseOpts, filters, writer)
+	case "csv":
+		return exportWorkoutsCSV(ctx, baseOpts, filters, writer)
+	default:
+		return fmt.Errorf("unsupported --format %q (expected jsonl or csv)", format)
+	}
+}
+
+func exportWorkoutsJSONL(ctx context.Context, baseOpts *api.ListOptions, filters workoutFilters, w io.Writer) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	return iterateWorkouts(ctx, baseOpts, filters, func(workout workouts.Workout) error {
+		return encoder.Encode(workout)
+	})
+}
+
+func exportWorkoutsCSV(ctx context.Context, baseOpts *api.ListOptions, filters workoutFilters, w io.Writer) error {
+	cw := csv.NewWriter(w)
+	if err := cw.Write([]string{
+		"id", "sport_name", "sport_id", "start", "end", "duration",
+		"strain", "avg_hr", "max_hr", "kilojoule", "distance_m", "percent_recorded",
+	}); err != nil {
+		return err
+	}
+	err := iterateWorkouts(ctx, baseOpts, filters, func(workout workouts.Workout) error {
+		return cw.Write([]string{
+			workout.ID,
+			workout.SportName,
+			intPtrToString(workout.SportID),
+			workout.Start.Format(time.RFC3339Nano),
+			workout.End.Format(time.RFC3339Nano),
+			formatDuration(workout.Start, workout.End),
+			fmt.Sprintf("%.3f", workout.Score.Strain),
+			intPtrToString(workout.Score.AverageHeartRate),
+			intPtrToString(workout.Score.MaxHeartRate),
+			floatPtrString(workout.Score.Kilojoule),
+			floatPtrString(workout.Score.DistanceMeter),
+			floatPtrString(workout.Score.PercentRecorded),
+		})
+	})
+	cw.Flush()
+	if err != nil {
+		return err
+	}
+	if err := cw.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func iterateWorkouts(ctx context.Context, baseOpts *api.ListOptions, filters workoutFilters, fn func(workouts.Workout) error) error {
+	var opts api.ListOptions
+	if baseOpts != nil {
+		opts = *baseOpts
+	}
+	for {
+		result, err := workoutsListFn(ctx, &opts)
+		if err != nil {
+			return err
+		}
+		if result == nil {
+			return nil
+		}
+		for _, workout := range filterWorkouts(result.Workouts, filters) {
+			if err := fn(workout); err != nil {
+				return err
+			}
+		}
+		if strings.TrimSpace(result.NextToken) == "" {
+			return nil
+		}
+		opts.NextToken = result.NextToken
+	}
+}
+
+func intPtrToString(value *int) string {
+	if value == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", *value)
+}
+
+func floatPtrString(value *float64) string {
+	if value == nil {
+		return ""
+	}
+	return strconv.FormatFloat(*value, 'f', -1, 64)
 }

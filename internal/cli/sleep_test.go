@@ -58,3 +58,24 @@ func TestSleepViewTextOutput(t *testing.T) {
 	require.Contains(t, output, "Performance: 88.0")
 	require.Contains(t, output, "In Bed:")
 }
+
+func TestSleepTodayUsesTodayRange(t *testing.T) {
+	orig := sleepListFn
+	defer func() { sleepListFn = orig }()
+	var captured *api.ListOptions
+	sleepListFn = func(ctx context.Context, opts *api.ListOptions) (*sleep.ListResult, error) {
+		captured = opts
+		return &sleep.ListResult{
+			Sleeps: []sleep.Session{
+				{ID: "sleep-today", Start: time.Now(), End: time.Now().Add(6 * time.Hour)},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"sleep", "today", "--text=false"}, "")
+	require.Contains(t, output, "\"sleep-today\"")
+	require.NotNil(t, captured)
+	require.NotNil(t, captured.Start)
+	require.NotNil(t, captured.End)
+	require.Equal(t, 25, captured.Limit)
+}

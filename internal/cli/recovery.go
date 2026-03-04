@@ -21,9 +21,11 @@ var (
 func init() {
 	rootCmd.AddCommand(recoveryCmd)
 	recoveryCmd.AddCommand(recoveryListCmd)
+	recoveryCmd.AddCommand(recoveryTodayCmd)
 	recoveryCmd.AddCommand(recoveryViewCmd)
 	addListFlags(recoveryListCmd)
 	recoveryListCmd.Flags().Bool("text", false, "Human-readable output")
+	recoveryTodayCmd.Flags().Bool("text", false, "Human-readable output")
 	recoveryViewCmd.Flags().Bool("text", false, "Human-readable output")
 }
 
@@ -43,6 +45,32 @@ var recoveryListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		textMode, err := cmd.Flags().GetBool("text")
+		if err != nil {
+			return err
+		}
+		result, err := recoveryListFn(cmd.Context(), opts)
+		if err != nil {
+			return err
+		}
+		if textMode {
+			fmt.Fprintln(cmd.OutOrStdout(), formatRecoveryText(result))
+			return nil
+		}
+		payload, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(payload))
+		return nil
+	},
+}
+
+var recoveryTodayCmd = &cobra.Command{
+	Use:   "today",
+	Short: "Show today's recovery scores",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		opts := todayRangeOptions(25)
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

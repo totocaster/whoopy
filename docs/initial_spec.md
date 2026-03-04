@@ -47,6 +47,8 @@
 - `whoopy recovery list` / `whoopy recovery view <cycle-id>` implemented using `GET /developer/v2/recovery` plus `GET /developer/v2/cycle/{cycle_id}/recovery`. Lists highlight cycle IDs, recovery score, resting HR, HRV, respiratory rate, calibration flag, and sleep IDs; the detail command dumps the full physiology profile (SpO₂, skin temp, strain). Reference: https://developer.whoop.com/api#tag/Recovery/operation/getRecoveryCollection.
 - `whoopy sleep list` / `whoopy sleep view <sleep-id>` implemented via `GET /developer/v2/activity/sleep` and `GET /developer/v2/activity/sleep/{sleep_id}`. Lists show local start time, duration, performance %, respiratory rate, nap flag, and ID; detailed view breaks down efficiency, consistency, and per-stage durations. Reference: https://developer.whoop.com/api#tag/Sleep/operation/getSleepCollection.
 - `whoopy stats daily --date YYYY-MM-DD [--text]` implemented atop a new `internal/stats` service that aggregates cycles, recovery, sleep, and workouts for a calendar day. JSON output includes the raw resources plus a summary block (cycle strain, recovery score, sleep performance, total sleep hours, workout count/strain); text mode renders a multi-section dashboard. The service reuses the official developer endpoints listed above and respects the shared pagination helpers.
+- Convenience `today` subcommands for workouts, recovery, and sleep call a shared helper that locks the range to the current local calendar day (midnight-to-midnight UTC-converted) with a default limit of 25. This gives users a zero-config snapshot via `whoopy <feature> today [--text]`.
+- `whoopy workouts export` streams workouts over any range as either JSON Lines (default) or CSV, auto-paginating via `next_token` and applying the same sport/strain filters as `workouts list`. Users can send output to stdout or `--output <path>` for scripts.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
@@ -65,6 +67,7 @@
 | Recovery | `GET /developer/v2/recovery` | Display score, resting HR, HRV, respiratory rate. |
 | Sleep | `GET /developer/v2/sleep` | Show performance %, stage durations, time in bed, respiratory rate. |
 | Workouts | `GET /developer/v2/workout`, `GET /developer/v2/workout/{id}` | Include sport type, strain, zone durations, distance, calories. |
+| Workouts export | `GET /developer/v2/workout` (auto-paginated) | Dump workouts as JSONL or CSV with client-side sport/strain filters for downstream analytics. |
 | Daily stats summary | Combination of Cycle + Recovery + Sleep + Workouts for a date | Replicates existing `whoop stats` output with official data. |
 | Webhook helper (stretch) | n/a (polling utility) | CLI subcommand to verify webhook payload handling by developers. |
 
@@ -76,24 +79,21 @@ whoopy auth logout
 
 whoopy profile show [--text]
 
-whoopy cycles list [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--limit N]
+whoopy cycles list [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--limit N] [--cursor TOKEN]
 whoopy cycles view <cycle-id>
 
+whoopy recovery list [--start --end] [--limit N] [--cursor TOKEN]
 whoopy recovery today
-whoopy recovery list [--days N | --start --end]
+whoopy recovery view <cycle-id>
 
+whoopy sleep list [--start --end] [--limit N] [--cursor TOKEN]
 whoopy sleep today
-whoopy sleep list [--start --end] [--limit N]
 whoopy sleep view <sleep-id>
 
 whoopy workouts list [--start --end] [--limit N] [--sport NAME|ID] [--min-strain F] [--max-strain F]
+whoopy workouts today [--sport NAME|ID] [--min-strain F] [--max-strain F]
 whoopy workouts view <workout-id>
-
-whoopy cycles list [--start --end] [--limit N]
-whoopy cycles view <cycle-id>
-
-whoopy recovery list [--start --end] [--limit N]
-whoopy recovery view <cycle-id>
+whoopy workouts export [--start --end] [--limit N] [--cursor TOKEN] [--sport NAME|ID] [--min-strain F] [--max-strain F] [--format jsonl|csv] [--output PATH|-]
 
 whoopy stats daily --date YYYY-MM-DD [--text|--json]
 ```
@@ -105,6 +105,8 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Created a generic `internal/api.Page[T]` struct with `records` + `next_token` to decode all collection endpoints consistently while exposing a `HasNext()` helper for auto-pagination loops.
 - Introduced `internal/cli/addListFlags` + `parseListOptions` so every list command automatically advertises `--start`, `--end`, `--limit`, and `--cursor` flags, aligning with clig.dev guidance about predictable flag shapes. `--start/--end` accept RFC 3339 or `YYYY-MM-DD` (interpreted as UTC midnight) and pipe into `api.ListOptions`.
 - Flag parsing emits user-friendly errors when the range is inverted or when the limit is negative, preventing wasted WHOOP API calls and ensuring commands fail fast before any network traffic.
+- Added `todayRangeOptions(limit)` helper shared by the new `today` subcommands to encapsulate “local midnight to midnight” math and clamp the limit to a safe default.
+- The workouts export implementation keeps calling `GET /developer/v2/workout` while WHOOP returns `next_token`, streaming each page either as JSON Lines or CSV. Export honors the same client-side sport/strain filters and can target stdout or `--output` paths for automation.
 
 ## 7. CLI UX Principles
 - Follow the recommendations in https://clig.dev/:

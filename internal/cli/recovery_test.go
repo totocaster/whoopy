@@ -60,3 +60,29 @@ func TestRecoveryViewTextOutput(t *testing.T) {
 	require.Contains(t, output, "Recovery Score: 90")
 	require.Contains(t, output, "User Calibrating: yes")
 }
+
+func TestRecoveryTodayUsesTodayRange(t *testing.T) {
+	orig := recoveryListFn
+	defer func() { recoveryListFn = orig }()
+	var captured *api.ListOptions
+	recoveryListFn = func(ctx context.Context, opts *api.ListOptions) (*recovery.ListResult, error) {
+		captured = opts
+		return &recovery.ListResult{
+			Recoveries: []recovery.Recovery{
+				{
+					CycleID: 100,
+					Score: recovery.RecoveryScore{
+						RecoveryScore: floatPtr(85),
+					},
+				},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"recovery", "today", "--text=false"}, "")
+	require.Contains(t, output, "\"cycle_id\": 100")
+	require.NotNil(t, captured)
+	require.NotNil(t, captured.Start)
+	require.NotNil(t, captured.End)
+	require.Equal(t, 25, captured.Limit)
+}

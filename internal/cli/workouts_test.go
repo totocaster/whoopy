@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -138,4 +142,126 @@ func TestWorkoutsViewTextOutput(t *testing.T) {
 	require.Contains(t, output, "Sport: Skiing")
 	require.Contains(t, output, "Avg HR: 145")
 	require.Contains(t, output, "Strain: 11.2")
+}
+
+func TestWorkoutsTodayUsesTodayRange(t *testing.T) {
+	orig := workoutsListFn
+	defer func() { workoutsListFn = orig }()
+	var captured *api.ListOptions
+	workoutsListFn = func(ctx context.Context, opts *api.ListOptions) (*workouts.ListResult, error) {
+		captured = opts
+		return &workouts.ListResult{
+			Workouts: []workouts.Workout{
+				{
+					ID:        "today-1",
+					SportName: "Running",
+					Start:     time.Now(),
+					End:       time.Now().Add(time.Hour),
+					Score:     workouts.Score{Strain: 10.0},
+				},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"workouts", "today", "--text=false"}, "")
+	require.Contains(t, output, "\"today-1\"")
+	require.NotNil(t, captured)
+	require.NotNil(t, captured.Start)
+	require.NotNil(t, captured.End)
+	require.Equal(t, 25, captured.Limit)
+}
+
+func TestExportWorkoutsJSONLPaginates(t *testing.T) {
+	orig := workoutsListFn
+	defer func() { workoutsListFn = orig }()
+	calls := 0
+	workoutsListFn = func(ctx context.Context, opts *api.ListOptions) (*workouts.ListResult, error) {
+		calls++
+		switch calls {
+		case 1:
+			require.Empty(t, opts.NextToken)
+			return &workouts.ListResult{
+				Workouts: []workouts.Workout{
+					{
+						ID:        "w-json-1",
+						SportName: "Running",
+						Start:     time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
+						End:       time.Date(2026, 3, 4, 1, 0, 0, 0, time.UTC),
+						Score:     workouts.Score{Strain: 10.5},
+					},
+				},
+				NextToken: "cursor-1",
+			}, nil
+		case 2:
+			require.Equal(t, "cursor-1", opts.NextToken)
+			return &workouts.ListResult{
+				Workouts: []workouts.Workout{
+					{
+						ID:        "w-json-2",
+						SportName: "Cycling",
+						Start:     time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC),
+						End:       time.Date(2026, 3, 5, 2, 0, 0, 0, time.UTC),
+						Score:     workouts.Score{Strain: 8.1},
+					},
+				},
+			}, nil
+		default:
+			t.Fatalf("unexpected call %d", calls)
+			return nil, nil
+		}
+	}
+
+	buf := new(bytes.Buffer)
+	err := exportWorkouts(context.Background(), &api.ListOptions{Limit: 50}, workoutFilters{}, "jsonl", "-", buf)
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+	require.Contains(t, buf.String(), "\"id\":\"w-json-1\"")
+	require.Contains(t, buf.String(), "\"id\":\"w-json-2\"")
+}
+
+func TestExportWorkoutsCSVRespectsFilters(t *testing.T) {
+	orig := workoutsListFn
+	defer func() { workoutsListFn = orig }()
+	workoutsListFn = func(ctx context.Context, opts *api.ListOptions) (*workouts.ListResult, error) {
+		return &workouts.ListResult{
+			Workouts: []workouts.Workout{
+				{
+					ID:        "run-1",
+					SportID:   intPtr(21),
+					SportName: "Running",
+					Start:     time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
+					End:       time.Date(2026, 3, 4, 1, 0, 0, 0, time.UTC),
+					Score: workouts.Score{
+						Strain:           10.2,
+						AverageHeartRate: intPtr(150),
+						MaxHeartRate:     intPtr(170),
+						Kilojoule:        floatPtr(600),
+						DistanceMeter:    floatPtr(5000),
+					},
+				},
+				{
+					ID:        "ride-1",
+					SportID:   intPtr(42),
+					SportName: "Cycling",
+					Start:     time.Date(2026, 3, 4, 2, 0, 0, 0, time.UTC),
+					End:       time.Date(2026, 3, 4, 3, 0, 0, 0, time.UTC),
+					Score: workouts.Score{
+						Strain:          6.5,
+						PercentRecorded: floatPtr(100),
+					},
+				},
+			},
+		}, nil
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "workouts.csv")
+	filters := workoutFilters{minStrain: float64Ptr(9.0)}
+	err := exportWorkouts(context.Background(), nil, filters, "csv", outputPath, io.Discard)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Contains(t, string(data), "id,sport_name,sport_id,start,end,duration,strain,avg_hr,max_hr,kilojoule,distance_m,percent_recorded")
+	require.Contains(t, string(data), "run-1")
+	require.NotContains(t, string(data), "ride-1")
 }
