@@ -42,6 +42,7 @@
 - Core WHOOP API client implemented (token injection, auto-refresh, 401 retry, 429 backoff, JSON helper) to power upcoming commands.
 - `whoopy profile show` implemented (JSON by default, `--text` for human-readable) fetching `/user/profile/basic` and `/user/measurement/body`.
 - `whoopy workouts list` implemented with shared pagination flags, default JSON output (`workouts` array + `next_token`), and `--text` tables showing start time, duration, sport, strain, and avg HR. Data comes from `GET /developer/v2/workout`, pulling the documented score metrics (strain, HR, distances, zone durations) exposed by WHOOP’s official schema. Reference: https://developer.whoop.com/api#tag/Workout/operation/getWorkoutCollection.
+- `whoopy workouts view <id>` implemented to call `GET /developer/v2/workout/{id}` and render either the raw JSON object or a detailed text summary (start/duration, state, strain, HR, kJ, distance, percent recorded, zone splits). This shares the same service + formatting helpers as the list command so future consumers get consistent schemas across both commands.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:

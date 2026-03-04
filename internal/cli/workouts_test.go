@@ -65,4 +65,52 @@ func TestWorkoutsListTextOutput(t *testing.T) {
 	require.Contains(t, output, "w2")
 }
 
+func TestWorkoutsViewJSONOutput(t *testing.T) {
+	orig := workoutsViewFn
+	defer func() { workoutsViewFn = orig }()
+	workoutsViewFn = func(ctx context.Context, id string) (*workouts.Workout, error) {
+		require.Equal(t, "w9", id)
+		return &workouts.Workout{
+			ID:        "w9",
+			SportName: "Rowing",
+			Start:     time.Date(2026, 3, 5, 1, 0, 0, 0, time.UTC),
+			End:       time.Date(2026, 3, 5, 2, 0, 0, 0, time.UTC),
+			Score: workouts.Score{
+				Strain:           9.9,
+				AverageHeartRate: intPtr(130),
+				ZoneDurations:    workouts.ZoneDurations{},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"workouts", "view", "w9"}, "")
+	require.Contains(t, output, "\"id\": \"w9\"")
+	require.Contains(t, output, "\"sport_name\": \"Rowing\"")
+}
+
+func TestWorkoutsViewTextOutput(t *testing.T) {
+	orig := workoutsViewFn
+	defer func() { workoutsViewFn = orig }()
+	workoutsViewFn = func(ctx context.Context, id string) (*workouts.Workout, error) {
+		return &workouts.Workout{
+			ID:        "w11",
+			SportName: "Skiing",
+			Start:     time.Date(2026, 3, 6, 5, 0, 0, 0, time.UTC),
+			End:       time.Date(2026, 3, 6, 6, 15, 0, 0, time.UTC),
+			Score: workouts.Score{
+				Strain:           11.2,
+				AverageHeartRate: intPtr(145),
+				MaxHeartRate:     intPtr(170),
+				ZoneDurations:    workouts.ZoneDurations{},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"workouts", "view", "w11", "--text"}, "")
+	require.Contains(t, output, "ID: w11")
+	require.Contains(t, output, "Sport: Skiing")
+	require.Contains(t, output, "Avg HR: 145")
+	require.Contains(t, output, "Strain: 11.2")
+}
+
 func intPtr(v int) *int { return &v }

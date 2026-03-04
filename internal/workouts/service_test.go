@@ -88,6 +88,29 @@ func TestServiceListValidatesOptions(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestServiceGetFetchesWorkout(t *testing.T) {
+	rec := workoutRecord{
+		ID:         "w123",
+		SportName:  "Rowing",
+		ScoreState: "SCORED",
+		Start:      "2026-03-03T01:00:00Z",
+		End:        "2026-03-03T01:30:00Z",
+	}
+	fake := &fakeClient{response: rec}
+	svc := &Service{client: fake}
+	got, err := svc.Get(context.Background(), "w123")
+	require.NoError(t, err)
+	require.Equal(t, workoutsPath+"/w123", fake.lastPath)
+	require.Equal(t, "w123", got.ID)
+	require.Equal(t, "Rowing", got.SportName)
+}
+
+func TestServiceGetRequiresID(t *testing.T) {
+	svc := &Service{client: &fakeClient{}}
+	_, err := svc.Get(context.Background(), "")
+	require.Error(t, err)
+}
+
 type fakeClient struct {
 	response  any
 	err       error

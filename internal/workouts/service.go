@@ -10,7 +10,7 @@ import (
 	"github.com/toto/whoopy/internal/api"
 )
 
-const workoutsPath = "/activity/workout"
+const workoutsPath = "/workout"
 
 // Service fetches workout data from WHOOP's developer API.
 type Service struct {
@@ -63,6 +63,23 @@ func (s *Service) List(ctx context.Context, opts *api.ListOptions) (*ListResult,
 		workouts[i] = workout
 	}
 	return &ListResult{Workouts: workouts, NextToken: strings.TrimSpace(resp.NextToken)}, nil
+}
+
+// Get fetches a single workout by ID.
+func (s *Service) Get(ctx context.Context, id string) (*Workout, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("workout id is required")
+	}
+	path := fmt.Sprintf("%s/%s", workoutsPath, strings.TrimSpace(id))
+	var rec workoutRecord
+	if err := s.client.GetJSON(ctx, path, nil, &rec); err != nil {
+		return nil, fmt.Errorf("fetch workout %s: %w", id, err)
+	}
+	workout, err := convertRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+	return &workout, nil
 }
 
 // Workout represents the CLI-friendly workout model with parsed timestamps.
