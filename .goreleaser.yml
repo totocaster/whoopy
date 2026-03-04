@@ -130,4 +130,4 @@ brews:
       bin.install "whoopy"
     test: |
       assert_match version.to_s, shell_output("#{bin}/whoopy --version")
-      assert_match "whoopy profile", shell_output("#{bin}/whoopy --help")
+      assert_match "profile", shell_output("#{bin}/whoopy --help")

@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	tokenRefreshLeeway   = time.Minute
-	defaultRequestTimout = 30 * time.Second
-	defaultMax429Retry   = 3
+	tokenRefreshLeeway    = time.Minute
+	defaultRequestTimeout = 30 * time.Second
+	defaultMax429Retry    = 3
+	defaultUserAgent      = "whoopy/0.1"
 )
 
 // ErrNotAuthenticated is returned when no OAuth token is available locally.
@@ -52,20 +53,38 @@ type Client struct {
 	userAgent string
 }
 
+// ClientOption customizes a Client during construction.
+type ClientOption func(*Client)
+
+// WithUserAgent overrides the default HTTP User-Agent header.
+func WithUserAgent(agent string) ClientOption {
+	return func(c *Client) {
+		if trimmed := strings.TrimSpace(agent); trimmed != "" {
+			c.userAgent = trimmed
+		}
+	}
+}
+
 // NewClient constructs a Client using the supplied config and token store.
-func NewClient(cfg *config.Config, store *tokens.Store) *Client {
-	return &Client{
+func NewClient(cfg *config.Config, store *tokens.Store, opts ...ClientOption) *Client {
+	client := &Client{
 		cfg:        cfg,
 		store:      store,
 		refresher:  auth.NewFlow(cfg, store),
-		httpClient: &http.Client{Timeout: defaultRequestTimout},
+		httpClient: &http.Client{Timeout: defaultRequestTimeout},
 		now:        time.Now,
 		sleepFn:    sleepWithContext,
 		backoff:    defaultBackoff,
 		max429:     defaultMax429Retry,
 		baseURL:    strings.TrimRight(cfg.APIBaseURL, "/"),
-		userAgent:  "whoopy/0.1",
+		userAgent:  defaultUserAgent,
 	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(client)
+		}
+	}
+	return client
 }
 
 // GetJSON performs a GET request against the given API path and unmarshals the JSON response.

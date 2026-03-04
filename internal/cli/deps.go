@@ -15,5 +15,5 @@ var apiClientFactory = func() (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return api.NewClient(cfg, store), nil
+	return api.NewClient(cfg, store, api.WithUserAgent(userAgentString())), nil
 }

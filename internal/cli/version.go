@@ -39,6 +39,14 @@ func SetBuildInfo(version, commit, date string) {
 	rootCmd.Version = currentBuild.version
 }
 
+func userAgentString() string {
+	version := strings.TrimSpace(currentBuild.version)
+	if version == "" {
+		version = "dev"
+	}
+	return fmt.Sprintf("whoopy/%s", version)
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show build version information",
