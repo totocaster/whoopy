@@ -34,7 +34,7 @@ func TestWorkoutsListJSONOutput(t *testing.T) {
 		}, nil
 	}
 
-	output := runCLICommand(t, []string{"workouts", "list"}, "")
+	output := runCLICommand(t, []string{"workouts", "list", "--text=false"}, "")
 	require.Contains(t, output, "\"id\": \"w1\"")
 	require.Contains(t, output, "\"next_token\": \"cursor\"")
 }
@@ -65,6 +65,33 @@ func TestWorkoutsListTextOutput(t *testing.T) {
 	require.Contains(t, output, "w2")
 }
 
+func TestWorkoutsListFilters(t *testing.T) {
+	orig := workoutsListFn
+	defer func() { workoutsListFn = orig }()
+	workoutsListFn = func(ctx context.Context, opts *api.ListOptions) (*workouts.ListResult, error) {
+		return &workouts.ListResult{
+			Workouts: []workouts.Workout{
+				{ID: "run", SportName: "Running", SportID: intPtr(21), Score: workouts.Score{Strain: 10.1}},
+				{ID: "ride", SportName: "Cycling", SportID: intPtr(42), Score: workouts.Score{Strain: 8.0}},
+			},
+		}, nil
+	}
+
+	output := runCLICommand(t, []string{"workouts", "list", "--sport", "run", "--min-strain", "9.5", "--max-strain", "11.0", "--text=false"}, "")
+	require.Contains(t, output, "\"id\": \"run\"")
+	require.NotContains(t, output, "\"id\": \"ride\"")
+
+	workoutsListFn = func(ctx context.Context, opts *api.ListOptions) (*workouts.ListResult, error) {
+		return &workouts.ListResult{
+			Workouts: []workouts.Workout{
+				{ID: "sport-id", SportName: "Rowing", SportID: intPtr(99), Score: workouts.Score{Strain: 7.0}},
+			},
+		}, nil
+	}
+	output = runCLICommand(t, []string{"workouts", "list", "--sport", "99", "--text=false"}, "")
+	require.Contains(t, output, "\"id\": \"sport-id\"")
+}
+
 func TestWorkoutsViewJSONOutput(t *testing.T) {
 	orig := workoutsViewFn
 	defer func() { workoutsViewFn = orig }()
@@ -83,7 +110,7 @@ func TestWorkoutsViewJSONOutput(t *testing.T) {
 		}, nil
 	}
 
-	output := runCLICommand(t, []string{"workouts", "view", "w9"}, "")
+	output := runCLICommand(t, []string{"workouts", "view", "w9", "--text=false"}, "")
 	require.Contains(t, output, "\"id\": \"w9\"")
 	require.Contains(t, output, "\"sport_name\": \"Rowing\"")
 }
@@ -114,3 +141,5 @@ func TestWorkoutsViewTextOutput(t *testing.T) {
 }
 
 func intPtr(v int) *int { return &v }
+
+func floatPtr(v float64) *float64 { return &v }

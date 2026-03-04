@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -19,12 +19,21 @@ var (
 	workoutsViewFn = defaultWorkoutsView
 )
 
+const (
+	workoutFlagSport     = "sport"
+	workoutFlagMinStrain = "min-strain"
+	workoutFlagMaxStrain = "max-strain"
+)
+
 func init() {
 	rootCmd.AddCommand(workoutsCmd)
 	workoutsCmd.AddCommand(workoutsListCmd)
 	workoutsCmd.AddCommand(workoutsViewCmd)
 	addListFlags(workoutsListCmd)
 	workoutsListCmd.Flags().Bool("text", false, "Human-readable output")
+	workoutsListCmd.Flags().String(workoutFlagSport, "", "Filter workouts by sport name or ID (client-side filter)")
+	workoutsListCmd.Flags().Float64(workoutFlagMinStrain, 0, "Minimum strain (inclusive)")
+	workoutsListCmd.Flags().Float64(workoutFlagMaxStrain, 0, "Maximum strain (inclusive)")
 	workoutsViewCmd.Flags().Bool("text", false, "Human-readable output")
 }
 
@@ -44,6 +53,10 @@ var workoutsListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		filters, err := parseWorkoutFilters(cmd)
+		if err != nil {
+			return err
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -51,6 +64,9 @@ var workoutsListCmd = &cobra.Command{
 		result, err := workoutsListFn(cmd.Context(), opts)
 		if err != nil {
 			return err
+		}
+		if result != nil {
+			result.Workouts = filterWorkouts(result.Workouts, filters)
 		}
 		if textMode {
 			fmt.Fprintln(cmd.OutOrStdout(), formatWorkoutsText(result))
@@ -145,25 +161,7 @@ func formatWorkoutStart(w workouts.Workout) string {
 }
 
 func formatWorkoutDuration(w workouts.Workout) string {
-	dur := w.End.Sub(w.Start)
-	if dur <= 0 {
-		return "n/a"
-	}
-	dur = dur.Round(time.Second)
-	hours := int(dur.Hours())
-	minutes := int(dur.Minutes()) % 60
-	seconds := int(dur.Seconds()) % 60
-	switch {
-	case hours > 0:
-		return fmt.Sprintf("%dh%02dm", hours, minutes)
-	case minutes > 0:
-		if seconds > 0 {
-			return fmt.Sprintf("%dm%02ds", minutes, seconds)
-		}
-		return fmt.Sprintf("%dm", minutes)
-	default:
-		return fmt.Sprintf("%ds", seconds)
-	}
+	return formatDuration(w.Start, w.End)
 }
 
 func formatWorkoutStrain(w workouts.Workout) string {
@@ -210,45 +208,86 @@ func formatWorkoutDetailText(w *workouts.Workout) string {
 	return strings.TrimSpace(b.String())
 }
 
-func safeValue(value string) string {
-	if strings.TrimSpace(value) == "" {
-		return "n/a"
-	}
-	return value
+type workoutFilters struct {
+	sportQuery string
+	minStrain  *float64
+	maxStrain  *float64
 }
 
-func formatIntPtr(v *int) string {
-	if v == nil {
-		return "n/a"
+func parseWorkoutFilters(cmd *cobra.Command) (workoutFilters, error) {
+	var filters workoutFilters
+	sport, err := cmd.Flags().GetString(workoutFlagSport)
+	if err != nil {
+		return filters, err
 	}
-	return fmt.Sprintf("%d", *v)
+	filters.sportQuery = strings.TrimSpace(sport)
+
+	minStrain, err := cmd.Flags().GetFloat64(workoutFlagMinStrain)
+	if err != nil {
+		return filters, err
+	}
+	if cmd.Flags().Changed(workoutFlagMinStrain) {
+		filters.minStrain = float64Ptr(minStrain)
+	}
+
+	maxStrain, err := cmd.Flags().GetFloat64(workoutFlagMaxStrain)
+	if err != nil {
+		return filters, err
+	}
+	if cmd.Flags().Changed(workoutFlagMaxStrain) {
+		filters.maxStrain = float64Ptr(maxStrain)
+	}
+
+	if filters.minStrain != nil && filters.maxStrain != nil && *filters.minStrain > *filters.maxStrain {
+		return filters, fmt.Errorf("--min-strain cannot be greater than --max-strain")
+	}
+
+	return filters, nil
 }
 
-func formatFloatPtr(v *float64, precision int) string {
-	if v == nil {
-		return "n/a"
-	}
-	format := fmt.Sprintf("%%.%df", precision)
-	return fmt.Sprintf(format, *v)
+func (f workoutFilters) active() bool {
+	return f.sportQuery != "" || f.minStrain != nil || f.maxStrain != nil
 }
 
-func formatPercent(v *float64) string {
-	if v == nil {
-		return "n/a"
+func (f workoutFilters) matches(w workouts.Workout) bool {
+	if f.sportQuery != "" && !matchesSportQuery(f.sportQuery, w) {
+		return false
 	}
-	return fmt.Sprintf("%.1f", *v*100)
+	if f.minStrain != nil && w.Score.Strain < *f.minStrain {
+		return false
+	}
+	if f.maxStrain != nil && w.Score.Strain > *f.maxStrain {
+		return false
+	}
+	return true
 }
 
-func formatTimestamp(t time.Time) string {
-	if t.IsZero() {
-		return "n/a"
+func filterWorkouts(items []workouts.Workout, filters workoutFilters) []workouts.Workout {
+	if !filters.active() {
+		return items
 	}
-	return t.Local().Format(time.RFC1123)
+	filtered := make([]workouts.Workout, 0, len(items))
+	for _, w := range items {
+		if filters.matches(w) {
+			filtered = append(filtered, w)
+		}
+	}
+	return filtered
 }
 
-func formatInt64Ptr(v *int64) string {
-	if v == nil {
-		return "-"
+func matchesSportQuery(query string, w workouts.Workout) bool {
+	if strings.TrimSpace(query) == "" {
+		return true
 	}
-	return fmt.Sprintf("%d", *v)
+	q := strings.ToLower(strings.TrimSpace(query))
+	if id, err := strconv.Atoi(q); err == nil {
+		if w.SportID != nil && *w.SportID == id {
+			return true
+		}
+	}
+	return strings.Contains(strings.ToLower(w.SportName), q)
+}
+
+func float64Ptr(v float64) *float64 {
+	return &v
 }

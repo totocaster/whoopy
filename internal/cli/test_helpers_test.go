@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
 	"github.com/toto/whoopy/internal/paths"
@@ -28,6 +30,7 @@ func runCLICommand(t *testing.T, args []string, input string) string {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
 	rootCmd.SetArgs(nil)
+	resetCommandFlags(rootCmd)
 	require.NoError(t, err)
 	return buf.String()
 }
@@ -44,4 +47,14 @@ func getConfigDir(t *testing.T) string {
 	dir, err := paths.ConfigDir()
 	require.NoError(t, err)
 	return dir
+}
+
+func resetCommandFlags(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		_ = f.Value.Set(f.DefValue)
+		f.Changed = false
+	})
+	for _, child := range cmd.Commands() {
+		resetCommandFlags(child)
+	}
 }
