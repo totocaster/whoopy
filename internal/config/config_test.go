@@ -8,13 +8,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/toto/whoopy/internal/config"
+	"github.com/toto/whoopy/internal/paths"
 )
 
 func TestLoadFromFile(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("WHOOPY_CONFIG_DIR", dir)
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
 
-	cfgPath := filepath.Join(dir, "whoopy", "config.toml")
+	cfgPath := filepath.Join(dir, "config.toml")
 	require.NoError(t, os.MkdirAll(filepath.Dir(cfgPath), 0o700))
 	err := os.WriteFile(cfgPath, []byte(`
 client_id = "client-file"
@@ -35,8 +37,9 @@ redirect_uri = "http://127.0.0.1:9999/callback"
 }
 
 func TestLoadEnvOverrides(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("WHOOPY_CONFIG_DIR", dir)
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
 	t.Setenv("WHOOPY_CLIENT_ID", "env-id")
 	t.Setenv("WHOOPY_CLIENT_SECRET", "env-secret")
 	t.Setenv("WHOOPY_API_BASE_URL", "https://env/api")
@@ -53,8 +56,9 @@ func TestLoadEnvOverrides(t *testing.T) {
 }
 
 func TestLoadMissingClientID(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("WHOOPY_CONFIG_DIR", dir)
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
 	t.Setenv("WHOOPY_CLIENT_SECRET", "secret-only")
 
 	_, err := config.Load()

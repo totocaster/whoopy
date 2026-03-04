@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/toto/whoopy/internal/auth"
 	"github.com/toto/whoopy/internal/config"
+	"github.com/toto/whoopy/internal/paths"
 	"github.com/toto/whoopy/internal/tokens"
 )
 
@@ -27,6 +30,14 @@ var (
 	stateGenerator  = randomState
 	openBrowserFunc = auth.OpenBrowser
 )
+
+const configTemplate = `# whoopy configuration scaffold.
+# Replace the empty client ID/secret with your WHOOP developer OAuth credentials.
+client_id = ""
+client_secret = ""
+oauth_base_url = "https://api.prod.whoop.com/oauth"
+redirect_uri = "http://127.0.0.1:8735/oauth/callback"
+`
 
 func init() {
 	rootCmd.AddCommand(authCmd)
@@ -65,6 +76,14 @@ var authLoginCmd = &cobra.Command{
 		codeFlag, err := cmd.Flags().GetString("code")
 		if err != nil {
 			return err
+		}
+
+		templateCreated, templatePath, err := ensureConfigTemplate()
+		if err != nil {
+			return err
+		}
+		if templateCreated {
+			cmd.Printf("Created configuration template at %s. Update it with your WHOOP OAuth client ID and secret.\n", templatePath)
 		}
 
 		cfg, err := config.Load()
@@ -351,4 +370,25 @@ func humanizeDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh%dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
+}
+
+func ensureConfigTemplate() (bool, string, error) {
+	path, err := paths.ConfigFile()
+	if err != nil {
+		return false, "", err
+	}
+	if _, err := os.Stat(path); err == nil {
+		return false, path, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, "", fmt.Errorf("check config file: %w", err)
+	}
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return false, "", fmt.Errorf("create config directory: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(configTemplate), 0o600); err != nil {
+		return false, "", fmt.Errorf("write config template: %w", err)
+	}
+	return true, path, nil
 }

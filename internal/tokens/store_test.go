@@ -8,11 +8,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/toto/whoopy/internal/paths"
 	"github.com/toto/whoopy/internal/tokens"
 )
 
 func TestStoreSaveLoadClear(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nested", "tokens.json")
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
+	path := filepath.Join(dir, "nested", "tokens.json")
 	store, err := tokens.NewStore(path)
 	require.NoError(t, err)
 
@@ -38,7 +42,10 @@ func TestStoreSaveLoadClear(t *testing.T) {
 }
 
 func TestStoreSaveNilToken(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "tokens.json")
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
+	path := filepath.Join(dir, "tokens.json")
 	store, err := tokens.NewStore(path)
 	require.NoError(t, err)
 
@@ -47,7 +54,10 @@ func TestStoreSaveNilToken(t *testing.T) {
 }
 
 func TestStorePath(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "tokens.json")
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
+	path := filepath.Join(dir, "tokens.json")
 	store, err := tokens.NewStore(path)
 	require.NoError(t, err)
 	require.Equal(t, path, store.Path())

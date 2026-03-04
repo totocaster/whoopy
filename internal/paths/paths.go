@@ -6,12 +6,35 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 )
 
 const appDirName = "whoopy"
 
+var (
+	overrideMu        sync.RWMutex
+	configDirOverride string
+)
+
+// SetConfigDirOverride forces ConfigDir to use the provided directory. Intended for tests.
+func SetConfigDirOverride(path string) {
+	overrideMu.Lock()
+	defer overrideMu.Unlock()
+	configDirOverride = path
+}
+
 // ConfigDir returns the OS-specific configuration directory for whoopy, ensuring it exists.
 func ConfigDir() (string, error) {
+	overrideMu.RLock()
+	override := configDirOverride
+	overrideMu.RUnlock()
+	if override != "" {
+		if err := os.MkdirAll(override, 0o700); err != nil {
+			return "", fmt.Errorf("create config directory: %w", err)
+		}
+		return override, nil
+	}
+
 	var base string
 	if env := os.Getenv("WHOOPY_CONFIG_DIR"); env != "" {
 		base = env

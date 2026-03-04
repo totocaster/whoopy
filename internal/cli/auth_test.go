@@ -12,10 +12,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/toto/whoopy/internal/paths"
 )
 
-func TestAuthLoginStatusLogoutManualFlow(t *testing.T) {
-	t.Setenv("WHOOPY_CONFIG_DIR", t.TempDir())
+func TestAuthManualFlow(t *testing.T) {
+	t.Setenv("WHOOPY_CLIENT_ID", "")
+	t.Setenv("WHOOPY_CLIENT_SECRET", "")
+	t.Setenv("WHOOPY_OAUTH_BASE_URL", "")
+	t.Setenv("WHOOPY_REDIRECT_URI", "")
+
+	setTestConfigDir(t)
 	configPath := filepath.Join(getConfigDir(t), "config.toml")
 	require.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0o700))
 
@@ -71,6 +78,24 @@ redirect_uri = "http://127.0.0.1:8735/oauth/callback"
 	require.True(t, os.IsNotExist(err))
 }
 
+func TestEnsureConfigTemplate(t *testing.T) {
+	setTestConfigDir(t)
+	path := filepath.Join(getConfigDir(t), "config.toml")
+
+	created, templatePath, err := ensureConfigTemplate()
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Equal(t, path, templatePath)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(data), `client_id = ""`)
+
+	createdAgain, _, err := ensureConfigTemplate()
+	require.NoError(t, err)
+	require.False(t, createdAgain)
+}
+
 func runCLICommand(t *testing.T, args []string, input string) string {
 	t.Helper()
 	var buf bytes.Buffer
@@ -91,7 +116,13 @@ func runCLICommand(t *testing.T, args []string, input string) string {
 
 func getConfigDir(t *testing.T) string {
 	t.Helper()
-	base := os.Getenv("WHOOPY_CONFIG_DIR")
-	require.NotEmpty(t, base, "WHOOPY_CONFIG_DIR must be set in tests")
-	return filepath.Join(base, "whoopy")
+	dir, err := paths.ConfigDir()
+	require.NoError(t, err)
+	return dir
+}
+
+func setTestConfigDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
 }
