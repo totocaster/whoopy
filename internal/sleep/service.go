@@ -56,11 +56,14 @@ type Score struct {
 
 // StageSummary contains duration-in-milliseconds for each sleep stage.
 type StageSummary struct {
-	TotalInBedTimeMilli         *int64 `json:"total_in_bed_time_ms,omitempty"`
-	TotalAwakeTimeMilli         *int64 `json:"total_awake_time_ms,omitempty"`
-	TotalLightSleepTimeMilli    *int64 `json:"total_light_sleep_time_ms,omitempty"`
-	TotalSlowWaveSleepTimeMilli *int64 `json:"total_slow_wave_sleep_time_ms,omitempty"`
-	TotalRemSleepTimeMilli      *int64 `json:"total_rem_sleep_time_ms,omitempty"`
+	TotalInBedTimeMilli         *int64 `json:"total_in_bed_time_milli,omitempty"`
+	TotalAwakeTimeMilli         *int64 `json:"total_awake_time_milli,omitempty"`
+	TotalLightSleepTimeMilli    *int64 `json:"total_light_sleep_time_milli,omitempty"`
+	TotalSlowWaveSleepTimeMilli *int64 `json:"total_slow_wave_sleep_time_milli,omitempty"`
+	TotalRemSleepTimeMilli      *int64 `json:"total_rem_sleep_time_milli,omitempty"`
+	TotalNoDataTimeMilli        *int64 `json:"total_no_data_time_milli,omitempty"`
+	SleepCycleCount             *int   `json:"sleep_cycle_count,omitempty"`
+	DisturbanceCount            *int   `json:"disturbance_count,omitempty"`
 }
 
 // List retrieves sleep sessions using the shared pagination options.
@@ -130,11 +133,14 @@ type sleepScore struct {
 }
 
 type stageSummary struct {
-	TotalInBedTimeMilli         *int64 `json:"total_in_bed_time_ms"`
-	TotalAwakeTimeMilli         *int64 `json:"total_awake_time_ms"`
-	TotalLightSleepTimeMilli    *int64 `json:"total_light_sleep_time_ms"`
-	TotalSlowWaveSleepTimeMilli *int64 `json:"total_slow_wave_sleep_time_ms"`
-	TotalRemSleepTimeMilli      *int64 `json:"total_rem_sleep_time_ms"`
+	TotalInBedTimeMilli         *int64 `json:"total_in_bed_time_milli"`
+	TotalAwakeTimeMilli         *int64 `json:"total_awake_time_milli"`
+	TotalLightSleepTimeMilli    *int64 `json:"total_light_sleep_time_milli"`
+	TotalSlowWaveSleepTimeMilli *int64 `json:"total_slow_wave_sleep_time_milli"`
+	TotalRemSleepTimeMilli      *int64 `json:"total_rem_sleep_time_milli"`
+	TotalNoDataTimeMilli        *int64 `json:"total_no_data_time_milli"`
+	SleepCycleCount             *int   `json:"sleep_cycle_count"`
+	DisturbanceCount            *int   `json:"disturbance_count"`
 }
 
 func convertRecord(rec sessionRecord) (Session, error) {
@@ -191,6 +197,9 @@ func convertStageSummary(summary *stageSummary) StageSummary {
 		TotalLightSleepTimeMilli:    summary.TotalLightSleepTimeMilli,
 		TotalSlowWaveSleepTimeMilli: summary.TotalSlowWaveSleepTimeMilli,
 		TotalRemSleepTimeMilli:      summary.TotalRemSleepTimeMilli,
+		TotalNoDataTimeMilli:        summary.TotalNoDataTimeMilli,
+		SleepCycleCount:             summary.SleepCycleCount,
+		DisturbanceCount:            summary.DisturbanceCount,
 	}
 }
 

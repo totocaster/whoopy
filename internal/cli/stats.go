@@ -93,7 +93,7 @@ func formatStatsText(report *stats.DailyReport) string {
 	fmt.Fprintf(&b, "Summary: \n")
 	fmt.Fprintf(&b, "  Cycle Strain: %s\n", formatFloatPtr(report.Summary.CycleStrain, 1))
 	fmt.Fprintf(&b, "  Recovery Score: %s\n", formatFloatPtr(report.Summary.RecoveryScore, 0))
-	fmt.Fprintf(&b, "  Sleep Performance: %s %%\n", formatPercent(report.Summary.SleepPerformance))
+	fmt.Fprintf(&b, "  Sleep Performance: %s %%\n", formatFloatPtr(report.Summary.SleepPerformance, 1))
 	fmt.Fprintf(&b, "  Total Sleep: %.1f h\n", report.Summary.TotalSleepHours)
 	fmt.Fprintf(&b, "  Workouts: %d (total strain %.1f)\n\n", report.Summary.WorkoutCount, report.Summary.TotalWorkoutStrain)
 

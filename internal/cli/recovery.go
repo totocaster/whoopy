@@ -179,7 +179,7 @@ func formatRecoveryDetailText(rec *recovery.Recovery) string {
 	fmt.Fprintf(&b, "Resting HR: %s bpm\n", formatFloatPtr(rec.Score.RestingHeartRate, 0))
 	fmt.Fprintf(&b, "HRV (rmssd): %s ms\n", formatFloatPtr(rec.Score.HRVRMSSDMilli, 1))
 	fmt.Fprintf(&b, "Respiratory Rate: %s br/min\n", formatFloatPtr(rec.Score.RespiratoryRate, 1))
-	fmt.Fprintf(&b, "SpO₂: %s %%\n", formatPercent(rec.Score.Spo2Percentage))
+	fmt.Fprintf(&b, "SpO₂: %s %%\n", formatFloatPtr(rec.Score.Spo2Percentage, 1))
 	fmt.Fprintf(&b, "Skin Temp: %s °C\n", formatFloatPtr(rec.Score.SkinTempCelsius, 1))
 	fmt.Fprintf(&b, "Cycle Strain: %s\n", formatFloatPtr(rec.Score.CycleStrain, 1))
 	fmt.Fprintf(&b, "User Calibrating: %s\n", formatBool(rec.Score.UserCalibrating))

@@ -48,6 +48,7 @@ func init() {
 	authLoginCmd.Flags().Bool("no-browser", false, "Do not automatically open the authorization URL")
 	authLoginCmd.Flags().Bool("manual", false, "Skip local callback server and paste the redirected URL manually")
 	authLoginCmd.Flags().String("code", "", "Authorization code or redirect URL to exchange directly")
+	authStatusCmd.Flags().Bool("text", true, "Render output as human-readable text (default)")
 }
 
 var authCmd = &cobra.Command{
@@ -162,6 +163,9 @@ var authStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show token expiration info",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if _, err := cmd.Flags().GetBool("text"); err != nil {
+			return err
+		}
 		store, err := tokens.NewStore("")
 		if err != nil {
 			return err

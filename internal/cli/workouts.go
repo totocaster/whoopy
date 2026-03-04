@@ -440,7 +440,15 @@ func iterateWorkouts(ctx context.Context, baseOpts *api.ListOptions, filters wor
 	if baseOpts != nil {
 		opts = *baseOpts
 	}
+	maxRecords := 0
+	if opts.Limit > 0 {
+		maxRecords = opts.Limit
+	}
+	emitted := 0
 	for {
+		if maxRecords > 0 && emitted >= maxRecords {
+			return nil
+		}
 		result, err := workoutsListFn(ctx, &opts)
 		if err != nil {
 			return err
@@ -449,9 +457,13 @@ func iterateWorkouts(ctx context.Context, baseOpts *api.ListOptions, filters wor
 			return nil
 		}
 		for _, workout := range filterWorkouts(result.Workouts, filters) {
+			if maxRecords > 0 && emitted >= maxRecords {
+				return nil
+			}
 			if err := fn(workout); err != nil {
 				return err
 			}
+			emitted++
 		}
 		if strings.TrimSpace(result.NextToken) == "" {
 			return nil
