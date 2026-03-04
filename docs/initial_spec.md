@@ -37,6 +37,7 @@
 - `whoopy auth login` implemented with PKCE + Authorization Code flow, local callback server on configurable `redirect_uri`, and flags for `--no-browser`, `--manual`, and `--code` (paste redirect URL manually).
 - `whoopy auth status` reports stored token scopes + expiry; `whoopy auth logout` clears tokens and best-effort revokes refresh tokens.
 - Config now exposes `oauth_base_url` and `redirect_uri` fields (env overrides: `WHOOPY_OAUTH_BASE_URL`, `WHOOPY_REDIRECT_URI`).
+- Foundational unit tests in place for config loading, token storage, and OAuth flow helpers (PKCE generation, token exchange/refresh/logout).
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
