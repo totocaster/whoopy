@@ -43,18 +43,54 @@ make install   # builds and copies to ~/.local/bin/whoopy
 
 ## Configuration & Authentication
 
-1. Create a WHOOP developer app and note the **Client ID** and **Client Secret**.
-2. Run `whoopy auth login`. The CLI will scaffold `~/.config/whoopy/config.toml` like:
+### 1. Create a WHOOP developer app
+
+1. Sign in at [developer.whoop.com](https://developer.whoop.com/).
+2. Navigate to **Apps → Create App** and fill in the metadata (name, description, etc.).
+3. Add a **Redirect URI** – use `http://127.0.0.1:8735/oauth/callback` unless you have a reason to change it.
+4. Copy the **Client ID** and **Client Secret** from the app detail screen; whoopy cannot authenticate without them.
+
+> **Tip:** Keep the `offline` scope enabled plus the read scopes (`read:profile`, `read:workout`, etc.). whoopy requests the full set documented in [docs/initial_spec.md](docs/initial_spec.md#3-authentication--token-lifecycle).
+
+### 2. Populate `config.toml`
+
+Run `whoopy auth login` once. If `~/.config/whoopy/config.toml` (or `%APPDATA%\whoopy\config.toml` on Windows) does not exist, whoopy writes a template like:
 
 ```toml
-client_id = "your-client-id"
-client_secret = "your-client-secret"
+client_id = "YOUR_CLIENT_ID"
+client_secret = "YOUR_CLIENT_SECRET"
+
+# Optional overrides; defaults shown for reference
+api_base_url = "https://api.prod.whoop.com/developer/v2"
 oauth_base_url = "https://api.prod.whoop.com/oauth"
 redirect_uri = "http://127.0.0.1:8735/oauth/callback"
 ```
 
-3. The login flow defaults to opening your browser and listening on `127.0.0.1:8735`. Use `--manual` or `--no-browser` when working on remote machines.
-4. Tokens are stored at `~/.config/whoopy/tokens.json` (`%APPDATA%\whoopy\tokens.json` on Windows) with `0600` permissions. whoopy refreshes tokens automatically and rotates them when WHOOP returns new values.
+Update the two empty fields with your real credentials. You can also export environment variables (`WHOOPY_CLIENT_ID`, `WHOOPY_CLIENT_SECRET`, etc.) if you prefer not to store secrets on disk.
+
+### 3. Complete the OAuth flow
+
+Run `whoopy auth login` again after updating the config. By default:
+
+- whoopy spins up a temporary HTTP listener on `127.0.0.1:8735` that matches the redirect URI.
+- Your browser opens to WHOOP’s `/oauth/oauth2/auth` URL. Approve the requested scopes.
+- The CLI receives the authorization code, exchanges it for access + refresh tokens, and writes them to `~/.config/whoopy/tokens.json`.
+
+Headless workflows:
+
+- `whoopy auth login --no-browser` prints the URL without trying to open it.
+- `whoopy auth login --manual` or `--code "<redirect-url>"` lets you paste the callback URL instead of running a local listener.
+
+Tokens refresh automatically before expiry (`whoopy auth status` shows the remaining lifetime). `whoopy auth logout` clears the local cache and attempts to revoke the refresh token.
+
+### Config & token locations
+
+| Platform | Config path | Tokens path |
+| --- | --- | --- |
+| macOS / Linux | `${XDG_CONFIG_HOME:-~/.config}/whoopy/config.toml` | `${XDG_CONFIG_HOME:-~/.config}/whoopy/tokens.json` |
+| Windows | `%APPDATA%\whoopy\config.toml` | `%APPDATA%\whoopy\tokens.json` |
+
+Override both via `WHOOPY_CONFIG_DIR` if you need custom locations (CI/CD, ephemeral environments, etc.).
 
 Environment overrides:
 
