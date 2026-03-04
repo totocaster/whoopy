@@ -33,11 +33,17 @@
 - `whoopy auth logout` calls WHOOP’s revocation endpoint (if available) or deletes cached tokens and instructs the user to revoke access from their WHOOP account.
 - Ensure logout wipes local config directories securely.
 
+### 3.5 Implementation Status (Mar 4, 2026)
+- `whoopy auth login` implemented with PKCE + Authorization Code flow, local callback server on configurable `redirect_uri`, and flags for `--no-browser`, `--manual`, and `--code` (paste redirect URL manually).
+- `whoopy auth status` reports stored token scopes + expiry; `whoopy auth logout` clears tokens and best-effort revokes refresh tokens.
+- Config now exposes `oauth_base_url` and `redirect_uri` fields (env overrides: `WHOOPY_OAUTH_BASE_URL`, `WHOOPY_REDIRECT_URI`).
+
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
   - `WHOOPY_CLIENT_ID` / `WHOOPY_CLIENT_SECRET`
   - `$XDG_CONFIG_HOME/whoopy/config.toml`
 - Allow overriding base API URL for testing.
+- Additional overrides: `WHOOPY_OAUTH_BASE_URL` (default `https://api.prod.whoop.com/oauth`) and `WHOOPY_REDIRECT_URI` (default `http://127.0.0.1:8735/oauth/callback`).
 - Global flags: `--json` (default), `--text`, `--pretty`, `--debug`, `--config <path>`.
 
 ## 5. Planned Feature Set

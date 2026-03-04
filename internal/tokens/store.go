@@ -27,6 +27,11 @@ type Store struct {
 	mu   sync.Mutex
 }
 
+// Path returns the absolute file path backing this store.
+func (s *Store) Path() string {
+	return s.path
+}
+
 // NewStore creates a token store using the default token path unless an override is provided.
 func NewStore(customPath string) (*Store, error) {
 	var path string

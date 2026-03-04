@@ -11,19 +11,27 @@ import (
 	"github.com/toto/whoopy/internal/paths"
 )
 
-const defaultAPIBaseURL = "https://api.prod.whoop.com/developer/v2"
+const (
+	defaultAPIBaseURL  = "https://api.prod.whoop.com/developer/v2"
+	defaultOAuthBase   = "https://api.prod.whoop.com/oauth"
+	defaultRedirectURI = "http://127.0.0.1:8735/oauth/callback"
+)
 
 // Config captures user/tenant level configuration.
 type Config struct {
 	ClientID     string `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
 	APIBaseURL   string `toml:"api_base_url"`
+	OAuthBaseURL string `toml:"oauth_base_url"`
+	RedirectURI  string `toml:"redirect_uri"`
 }
 
 // Load reads configuration from environment variables with optional overrides from config.toml.
 func Load() (*Config, error) {
 	cfg := &Config{
-		APIBaseURL: defaultAPIBaseURL,
+		APIBaseURL:   defaultAPIBaseURL,
+		OAuthBaseURL: defaultOAuthBase,
+		RedirectURI:  defaultRedirectURI,
 	}
 
 	if err := mergeFile(cfg); err != nil {
@@ -68,5 +76,11 @@ func mergeEnv(cfg *Config) {
 	}
 	if v := strings.TrimSpace(os.Getenv("WHOOPY_API_BASE_URL")); v != "" {
 		cfg.APIBaseURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("WHOOPY_OAUTH_BASE_URL")); v != "" {
+		cfg.OAuthBaseURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("WHOOPY_REDIRECT_URI")); v != "" {
+		cfg.RedirectURI = v
 	}
 }
