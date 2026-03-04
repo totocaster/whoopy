@@ -24,9 +24,8 @@ import (
 const loginTimeout = 5 * time.Minute
 
 var (
-	flagLoginNoBrowser bool
-	flagLoginManual    bool
-	flagLoginCode      string
+	stateGenerator  = randomState
+	openBrowserFunc = auth.OpenBrowser
 )
 
 func init() {
@@ -35,9 +34,9 @@ func init() {
 	authCmd.AddCommand(authStatusCmd)
 	authCmd.AddCommand(authLogoutCmd)
 
-	authLoginCmd.Flags().BoolVar(&flagLoginNoBrowser, "no-browser", false, "Do not automatically open the authorization URL")
-	authLoginCmd.Flags().BoolVar(&flagLoginManual, "manual", false, "Skip local callback server and paste the redirected URL manually")
-	authLoginCmd.Flags().StringVar(&flagLoginCode, "code", "", "Authorization code or redirect URL to exchange directly")
+	authLoginCmd.Flags().Bool("no-browser", false, "Do not automatically open the authorization URL")
+	authLoginCmd.Flags().Bool("manual", false, "Skip local callback server and paste the redirected URL manually")
+	authLoginCmd.Flags().String("code", "", "Authorization code or redirect URL to exchange directly")
 }
 
 var authCmd = &cobra.Command{
@@ -55,6 +54,19 @@ var authLoginCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
 		defer cancel()
 
+		noBrowser, err := cmd.Flags().GetBool("no-browser")
+		if err != nil {
+			return err
+		}
+		manualMode, err := cmd.Flags().GetBool("manual")
+		if err != nil {
+			return err
+		}
+		codeFlag, err := cmd.Flags().GetString("code")
+		if err != nil {
+			return err
+		}
+
 		cfg, err := config.Load()
 		if err != nil {
 			return err
@@ -69,7 +81,7 @@ var authLoginCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("generate PKCE: %w", err)
 		}
-		state, err := randomState()
+		state, err := stateGenerator()
 		if err != nil {
 			return fmt.Errorf("generate state: %w", err)
 		}
@@ -79,21 +91,21 @@ var authLoginCmd = &cobra.Command{
 		redirectURI := cfg.RedirectURI
 
 		switch {
-		case flagLoginCode != "":
-			code, manualInputState, err = parseAuthInput(flagLoginCode)
+		case codeFlag != "":
+			code, manualInputState, err = parseAuthInput(codeFlag)
 			if err != nil {
 				return err
 			}
-			flagLoginManual = true
-		case flagLoginManual:
+			manualMode = true
+		case manualMode:
 			cmd.Println("Manual mode enabled. After approving access, copy the entire redirect URL (with code and state) and paste it when prompted.")
 			authURL, err := flow.BuildAuthURL(redirectURI, state, pkce)
 			if err != nil {
 				return err
 			}
 			printAuthURL(cmd, authURL)
-			if !flagLoginNoBrowser {
-				if err := auth.OpenBrowser(authURL); err != nil {
+			if !noBrowser {
+				if err := openBrowserFunc(authURL); err != nil {
 					fmt.Fprintf(cmd.ErrOrStderr(), "Failed to open browser automatically: %v\n", err)
 					fmt.Fprintf(cmd.ErrOrStderr(), "Please open the URL above manually.\n")
 				}
@@ -103,13 +115,13 @@ var authLoginCmd = &cobra.Command{
 				return err
 			}
 		default:
-			redirectURI, code, err = runAutomaticLogin(ctx, cmd, flow, cfg.RedirectURI, state, pkce)
+			redirectURI, code, err = runAutomaticLogin(ctx, cmd, flow, cfg.RedirectURI, state, pkce, noBrowser)
 			if err != nil {
 				return err
 			}
 		}
 
-		if flagLoginManual {
+		if manualMode {
 			if manualInputState == "" {
 				return errors.New("state missing in pasted URL; please paste the full redirect URL")
 			}
@@ -173,7 +185,7 @@ var authLogoutCmd = &cobra.Command{
 	},
 }
 
-func runAutomaticLogin(ctx context.Context, cmd *cobra.Command, flow *auth.Flow, configuredRedirect, state string, pkce *auth.PKCE) (string, string, error) {
+func runAutomaticLogin(ctx context.Context, cmd *cobra.Command, flow *auth.Flow, configuredRedirect, state string, pkce *auth.PKCE, noBrowser bool) (string, string, error) {
 	redirectURI, resultCh, shutdown, err := startCallbackServer(ctx, configuredRedirect, state)
 	if err != nil {
 		return "", "", err
@@ -185,8 +197,8 @@ func runAutomaticLogin(ctx context.Context, cmd *cobra.Command, flow *auth.Flow,
 		return "", "", err
 	}
 	printAuthURL(cmd, authURL)
-	if !flagLoginNoBrowser {
-		if err := auth.OpenBrowser(authURL); err != nil {
+	if !noBrowser {
+		if err := openBrowserFunc(authURL); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Failed to open browser automatically: %v\n", err)
 			fmt.Fprintf(cmd.ErrOrStderr(), "Please open the URL above manually.\n")
 		}
