@@ -8,9 +8,10 @@
 5. **Commit Discipline** – Keep commits small and logical (one feature/change per commit). Never commit without green tests.
 
 ## Current Status (2026-03-04)
-- Repo bootstrapped with Go module, Cobra root command, config loader, and token store.
-- OAuth PKCE flow implemented with `whoopy auth login|status|logout`.
-- Next priority: WHOOP API client + data commands (profile, cycles, recovery, sleep, workouts, stats).
+- Auth stack complete (`whoopy auth login|status|logout`) with persisted tokens + auto-refresh.
+- Core API client + shared list plumbing ready; profile summary implemented.
+- Workouts service + CLI (`whoopy workouts list/view`, JSON + `--text`) ship against `/developer/v2/activity/workout`.
+- Next up: cycles/recovery/sleep commands and aggregate `stats`.
 
 ## Testing Checklist
 - `go test ./...` before every commit.
