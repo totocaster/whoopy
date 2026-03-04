@@ -14,7 +14,7 @@ func TestServiceFetchMergesProfileAndBody(t *testing.T) {
 	fake := &fakeClient{
 		responses: map[string]any{
 			profilePath: profileResponse{
-				UserID:         "user-123",
+				UserID:         stringID("user-123"),
 				FirstName:      "Ada",
 				LastName:       "Lovelace",
 				Email:          "ada@example.com",
@@ -47,7 +47,7 @@ func TestServiceFetchMergesProfileAndBody(t *testing.T) {
 func TestServiceHandlesMetersAndPounds(t *testing.T) {
 	fake := &fakeClient{
 		responses: map[string]any{
-			profilePath: profileResponse{UserID: "user", Email: "x@y.com"},
+			profilePath: profileResponse{UserID: stringID("user"), Email: "x@y.com"},
 			bodyMeasurementPath: bodyMeasurementResponse{
 				HeightMeter: floatPtr(1.8),
 				WeightLbs:   floatPtr(150),
@@ -87,4 +87,11 @@ func floatPtr(v float64) *float64 {
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func TestStringIDUnmarshalJSONHandlesNumbers(t *testing.T) {
+	var resp profileResponse
+	payload := []byte(`{"user_id":12345}`)
+	require.NoError(t, json.Unmarshal(payload, &resp))
+	require.Equal(t, "12345", resp.UserID.String())
 }

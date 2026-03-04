@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -59,7 +60,7 @@ func (s *Service) Fetch(ctx context.Context) (*Summary, error) {
 }
 
 type profileResponse struct {
-	UserID         string  `json:"user_id"`
+	UserID         stringID `json:"user_id"`
 	FirstName      string  `json:"first_name"`
 	LastName       string  `json:"last_name"`
 	Email          string  `json:"email"`
@@ -81,7 +82,7 @@ type bodyMeasurementResponse struct {
 
 func mergeProfile(profile *profileResponse, body *bodyMeasurementResponse) *Summary {
 	summary := &Summary{
-		UserID:         profile.UserID,
+		UserID:         profile.UserID.String(),
 		Name:           displayName(profile),
 		Email:          profile.Email,
 		Locale:         profile.Locale,
@@ -172,4 +173,35 @@ func parseTime(raw string) *time.Time {
 func (s *Summary) MarshalJSON() ([]byte, error) {
 	type Alias Summary
 	return json.Marshal((*Alias)(s))
+}
+
+type stringID string
+
+func (id *stringID) UnmarshalJSON(data []byte) error {
+	if id == nil {
+		return fmt.Errorf("stringID: nil receiver")
+	}
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
+		*id = ""
+		return nil
+	}
+	if data[0] == '"' {
+		var raw string
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return err
+		}
+		*id = stringID(raw)
+		return nil
+	}
+	var num json.Number
+	if err := json.Unmarshal(data, &num); err != nil {
+		return err
+	}
+	*id = stringID(num.String())
+	return nil
+}
+
+func (id stringID) String() string {
+	return string(id)
 }
