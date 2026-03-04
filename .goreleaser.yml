@@ -54,6 +54,7 @@ release:
   github:
     owner: totocaster
     name: whoopy
+  mode: replace
   header: |
     ## whoopy {{ .Version }} ({{ .Date }})
 
