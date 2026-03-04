@@ -7,6 +7,7 @@
 4. **Binary Verification** – After `go test ./...`, run `make install` (which builds + copies to `~/.local/bin/whoopy`) and execute at least one representative CLI command (e.g., `whoopy <feature> ...`) to ensure the installed binary works end-to-end.
 5. **Documentation** – Update `docs/initial_spec.md`, this `AGENT.md`, and any CLI help/docs so future agents understand what changed.
 6. **Commit Discipline** – Keep commits small and logical (one feature/change per commit). Never commit without green tests.
+7. **Release Ritual** – When publishing, follow `RELEASE_SETUP.md`: tag `vX.Y.Z`, push, watch the GoReleaser workflow, and verify the Homebrew tap update + `brew install whoopy`.
 
 ## Current Status (2026-03-04)
 - Auth stack complete (`whoopy auth login|status|logout`) with persisted tokens + auto-refresh.
@@ -16,7 +17,8 @@
 - Recovery and sleep each gained `today` shortcuts mirroring the workouts UX for quick daily snapshots.
 - Stats aggregation landed (`whoopy stats daily --date …`) producing JSON/text dashboards by composing cycles/recovery/sleep/workouts.
 - Diagnostics command (`whoopy diag`) now surfaces config/token paths, credential presence, token expiry, and API probe status.
-- Next up: release packaging polish (goreleaser matrix, documented artifacts) and webhook/export stretch goals.
+- Release tooling added: `.goreleaser.yml`, Homebrew tap config, and Release workflow ready for v0.1.0 (see `RELEASE_SETUP.md`).
+- Next up: webhook/export stretch goals and any remaining distribution niceties (e.g., Windows builds) once macOS/Linux binaries ship.
 
 ## Testing Checklist
 - `go test ./...` before every commit.

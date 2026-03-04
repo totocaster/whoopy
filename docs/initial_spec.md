@@ -50,6 +50,7 @@
 - Convenience `today` subcommands for workouts, recovery, and sleep call a shared helper that locks the range to the current local calendar day (midnight-to-midnight UTC-converted) with a default limit of 25. This gives users a zero-config snapshot via `whoopy <feature> today [--text]`.
 - `whoopy workouts export` streams workouts over any range as either JSON Lines (default) or CSV, auto-paginating via `next_token` and applying the same sport/strain filters as `workouts list`. Users can send output to stdout or `--output <path>` for scripts.
 - `whoopy diag [--text]` now prints config + token file locations, credential presence, token freshness, and a lightweight `/user/profile/basic` probe so users can quickly see whether they're authenticated and whether the API is reachable.
+- Build metadata (`whoopy version` / `whoopy --version`) follows stamp’s ldflag strategy so tagged releases surface SemVer, commit SHA, and build date.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
@@ -135,9 +136,12 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Provide `whoopy diag` to print config path, token age, and last API status for support.
 
 ## 10. Build & Distribution
-- Use Go 1.22+ modules.
-- Create `make release` pipeline that runs lint/tests, builds multi-platform binaries (via `goreleaser` or `go build` matrix), updates Homebrew formula, and optionally publishes to Scoop.
-- Maintain backwards-compatible symlink/alias `whoop` if desired.
+- Use Go 1.22+ modules; `make build|test|install` remain the local dev loop.
+- GoReleaser (`.goreleaser.yml`) builds macOS+Linux (amd64/arm64), injects `main.version/commit/date` ldflags, creates universal macOS binaries, and uploads tarballs + checksums to GitHub Releases.
+- GitHub Actions workflow `.github/workflows/release.yml` mirrors stamp: trigger on `v*` tags, run `go test ./...`, then invoke GoReleaser. Attach artifacts even if the Homebrew tap token is missing.
+- Homebrew-only distribution for now. The GoReleaser `brews` stanza pushes updates to `totocaster/homebrew-tap/Formula/whoopy.rb` using the `HOMEBREW_TAP_TOKEN` secret. `Formula/whoopy.rb` in this repo is a template and reference for that tap.
+- Release ritual documented in `RELEASE_SETUP.md`: ensure main is green, tag `vX.Y.Z`, push tag, confirm release assets + tap update, and test `brew install whoopy`.
+- Future: consider Windows builds or additional package managers once macOS/Linux are stable.
 
 ## 11. Open Questions / Follow-Ups
 1. Confirm WHOOP client credentials availability (public vs confidential app).

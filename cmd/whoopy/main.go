@@ -8,7 +8,14 @@ import (
 	"github.com/toto/whoopy/internal/cli"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
+	cli.SetBuildInfo(version, commit, date)
 	ctx := context.Background()
 	if err := cli.Execute(ctx); err != nil {
 		if cliErr, ok := err.(interface{ ExitCode() int }); ok {
