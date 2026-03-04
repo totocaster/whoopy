@@ -39,23 +39,13 @@ jobs:
         run: go test -v ./...
 
       - name: Run GoReleaser
-        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN: ${{ env.HOMEBREW_TAP_TOKEN }}
-
-      - name: Run GoReleaser (skip Homebrew tap update)
-        if: ${{ env.HOMEBREW_TAP_TOKEN == '' }}
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean --skip=brews
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
