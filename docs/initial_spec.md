@@ -49,6 +49,7 @@
 - `whoopy stats daily --date YYYY-MM-DD [--text]` implemented atop a new `internal/stats` service that aggregates cycles, recovery, sleep, and workouts for a calendar day. JSON output includes the raw resources plus a summary block (cycle strain, recovery score, sleep performance, total sleep hours, workout count/strain); text mode renders a multi-section dashboard. The service reuses the official developer endpoints listed above and respects the shared pagination helpers.
 - Convenience `today` subcommands for workouts, recovery, and sleep call a shared helper that locks the range to the current local calendar day (midnight-to-midnight UTC-converted) with a default limit of 25. This gives users a zero-config snapshot via `whoopy <feature> today [--text]`.
 - `whoopy workouts export` streams workouts over any range as either JSON Lines (default) or CSV, auto-paginating via `next_token` and applying the same sport/strain filters as `workouts list`. Users can send output to stdout or `--output <path>` for scripts.
+- `whoopy diag [--text]` now prints config + token file locations, credential presence, token freshness, and a lightweight `/user/profile/basic` probe so users can quickly see whether they're authenticated and whether the API is reachable.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
@@ -68,6 +69,7 @@
 | Sleep | `GET /developer/v2/sleep` | Show performance %, stage durations, time in bed, respiratory rate. |
 | Workouts | `GET /developer/v2/workout`, `GET /developer/v2/workout/{id}` | Include sport type, strain, zone durations, distance, calories. |
 | Workouts export | `GET /developer/v2/workout` (auto-paginated) | Dump workouts as JSONL or CSV with client-side sport/strain filters for downstream analytics. |
+| Diagnostics | none (local + lightweight `/user/profile/basic` probe) | Surface config/token paths, token freshness, and API connectivity via `whoopy diag`. |
 | Daily stats summary | Combination of Cycle + Recovery + Sleep + Workouts for a date | Replicates existing `whoop stats` output with official data. |
 | Webhook helper (stretch) | n/a (polling utility) | CLI subcommand to verify webhook payload handling by developers. |
 
@@ -95,6 +97,8 @@ whoopy workouts today [--sport NAME|ID] [--min-strain F] [--max-strain F]
 whoopy workouts view <workout-id>
 whoopy workouts export [--start --end] [--limit N] [--cursor TOKEN] [--sport NAME|ID] [--min-strain F] [--max-strain F] [--format jsonl|csv] [--output PATH|-]
 
+whoopy diag [--text]
+
 whoopy stats daily --date YYYY-MM-DD [--text|--json]
 ```
 - Every `list` command paginates automatically; support `--cursor <token>` for manual control.
@@ -120,6 +124,10 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Define Go structs mirroring WHOOP v2 schemas; add adapters that map WHOOP fields to CLI-friendly names (e.g., `respiratory_rate` → `respRate`).
 - Stable JSON schema examples should be stored under `docs/examples/*.json`.
 - Include `source_endpoint` metadata for traceability.
+- Diagnostics output (`whoopy diag`) should expose three clearly delimited blocks:
+  - `config`: absolute path, existence flag, whether client ID/secret/env overrides are set, and the effective API/OAuth/redirect URLs. Do not fail if the file is missing—report the error inline.
+  - `tokens`: token file path + existence, last modified timestamp, scopes, expiry timestamp, humanized remaining lifetime, and whether a refresh token is stored.
+  - `api`: most recent health probe status (`ok` or `error`), latency in milliseconds, and any error message when authentication/config is incomplete. The probe can hit `/user/profile/basic` via the shared API client.
 
 ## 9. Error Handling
 - Distinguish between auth errors (token missing/expired/revoked), validation errors (bad flags), and API errors (HTTP >= 400).

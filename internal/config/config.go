@@ -28,6 +28,23 @@ type Config struct {
 
 // Load reads configuration from environment variables with optional overrides from config.toml.
 func Load() (*Config, error) {
+	cfg, err := LoadAllowEmpty()
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.ClientID == "" {
+		return nil, errors.New("missing client_id (set WHOOPY_CLIENT_ID or config file)")
+	}
+	if cfg.ClientSecret == "" {
+		return nil, errors.New("missing client_secret (set WHOOPY_CLIENT_SECRET or config file)")
+	}
+
+	return cfg, nil
+}
+
+// LoadAllowEmpty mirrors Load but does not enforce client credentials, making it suitable for diagnostics.
+func LoadAllowEmpty() (*Config, error) {
 	cfg := &Config{
 		APIBaseURL:   defaultAPIBaseURL,
 		OAuthBaseURL: defaultOAuthBase,
@@ -38,14 +55,6 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	mergeEnv(cfg)
-
-	if cfg.ClientID == "" {
-		return nil, errors.New("missing client_id (set WHOOPY_CLIENT_ID or config file)")
-	}
-	if cfg.ClientSecret == "" {
-		return nil, errors.New("missing client_secret (set WHOOPY_CLIENT_SECRET or config file)")
-	}
-
 	return cfg, nil
 }
 

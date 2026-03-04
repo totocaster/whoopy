@@ -12,10 +12,11 @@
 - Auth stack complete (`whoopy auth login|status|logout`) with persisted tokens + auto-refresh.
 - Core API client + shared list plumbing ready; profile summary implemented.
 - Workouts service + CLI (`whoopy workouts list/view`, JSON + `--text`) now include client-side filters (`--sport`, `--min-strain`, `--max-strain`) while hitting `/developer/v2/activity/workout`. New `whoopy workouts today` and `whoopy workouts export --format jsonl|csv` convenience commands reuse the same filtering and auto-pagination helper.
-- Cycles, recovery, and sleep services/CLI pairs (`whoopy cycles|recovery|sleep list/view`) implemented with shared pagination + formatting.
+- Cycles, recovery, and sleep services/CLI pairs (`whoopy cycles|recovery|sleep list/view`) implemented with shared pagination + formatting, plus `today` helpers for quick snapshots.
 - Recovery and sleep each gained `today` shortcuts mirroring the workouts UX for quick daily snapshots.
 - Stats aggregation landed (`whoopy stats daily --date …`) producing JSON/text dashboards by composing cycles/recovery/sleep/workouts.
-- Next up: diagnostics tooling and polish around release packaging.
+- Diagnostics command (`whoopy diag`) now surfaces config/token paths, credential presence, token expiry, and API probe status.
+- Next up: release packaging polish (goreleaser matrix, documented artifacts) and webhook/export stretch goals.
 
 ## Testing Checklist
 - `go test ./...` before every commit.
