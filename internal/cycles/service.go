@@ -119,9 +119,9 @@ func convertRecord(rec cycleRecord) (Cycle, error) {
 	if err != nil {
 		return Cycle{}, err
 	}
-	end, err := parseTimestamp("end", rec.End)
+	end, err := parseTimestampAllowBlank(rec.End)
 	if err != nil {
-		return Cycle{}, err
+		return Cycle{}, fmt.Errorf("parse end: %w", err)
 	}
 	created, err := parseTimestampAllowBlank(rec.CreatedAt)
 	if err != nil {

@@ -78,6 +78,29 @@ func TestServiceGetFetchesCycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cyclesPath+"/99", fake.lastPath)
 	require.Equal(t, int64(99), cycle.ID)
+	require.False(t, cycle.End.IsZero())
+}
+
+func TestServiceHandlesMissingEnd(t *testing.T) {
+	response := struct {
+		Records   []cycleRecord `json:"records"`
+		NextToken string        `json:"next_token"`
+	}{
+		Records: []cycleRecord{
+			{
+				ID:        5,
+				Start:     "2026-03-05T00:00:00Z",
+				End:       "",
+				CreatedAt: "2026-03-05T00:05:00Z",
+			},
+		},
+	}
+	fake := &fakeClient{response: response}
+	svc := &Service{client: fake}
+	result, err := svc.List(context.Background(), &api.ListOptions{})
+	require.NoError(t, err)
+	require.Len(t, result.Cycles, 1)
+	require.True(t, result.Cycles[0].End.IsZero())
 }
 
 type fakeClient struct {
