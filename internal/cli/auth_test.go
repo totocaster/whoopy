@@ -1,19 +1,13 @@
 package cli
 
 import (
-	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/toto/whoopy/internal/paths"
 )
 
 func TestAuthManualFlow(t *testing.T) {
@@ -94,35 +88,4 @@ func TestEnsureConfigTemplate(t *testing.T) {
 	createdAgain, _, err := ensureConfigTemplate()
 	require.NoError(t, err)
 	require.False(t, createdAgain)
-}
-
-func runCLICommand(t *testing.T, args []string, input string) string {
-	t.Helper()
-	var buf bytes.Buffer
-	rootCmd.SetArgs(args)
-	rootCmd.SetOut(&buf)
-	rootCmd.SetErr(&buf)
-	rootCmd.SetIn(strings.NewReader(input))
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err := Execute(ctx)
-	rootCmd.SetIn(os.Stdin)
-	rootCmd.SetOut(os.Stdout)
-	rootCmd.SetErr(os.Stderr)
-	rootCmd.SetArgs(nil)
-	require.NoError(t, err)
-	return buf.String()
-}
-
-func getConfigDir(t *testing.T) string {
-	t.Helper()
-	dir, err := paths.ConfigDir()
-	require.NoError(t, err)
-	return dir
-}
-
-func setTestConfigDir(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "whoopy")
-	paths.SetConfigDirOverride(dir)
-	t.Cleanup(func() { paths.SetConfigDirOverride("") })
 }
