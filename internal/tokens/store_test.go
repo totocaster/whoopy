@@ -24,7 +24,7 @@ func TestStoreSaveLoadClear(t *testing.T) {
 		AccessToken:  "access",
 		RefreshToken: "refresh",
 		TokenType:    "Bearer",
-		Scope:        []string{"offline", "sleep.read"},
+		Scope:        []string{"offline", "read:sleep"},
 		ExpiresAt:    time.Now().Add(2 * time.Hour).UTC().Round(time.Second),
 	}
 

@@ -48,11 +48,11 @@ func TestBuildAuthURLIncludesScopesAndState(t *testing.T) {
 	require.Equal(t, "challenge", q.Get("code_challenge"))
 	require.Equal(t, "S256", q.Get("code_challenge_method"))
 	require.Contains(t, q.Get("scope"), "offline")
-	require.Contains(t, q.Get("scope"), "sleep.read")
+	require.Contains(t, q.Get("scope"), "read:sleep")
 }
 
 func TestExchangeCodeSuccess(t *testing.T) {
-	tokenResp := `{"access_token":"new-access","refresh_token":"new-refresh","token_type":"Bearer","expires_in":3600,"scope":"offline sleep.read"}`
+	tokenResp := `{"access_token":"new-access","refresh_token":"new-refresh","token_type":"Bearer","expires_in":3600,"scope":"offline read:sleep"}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/oauth2/token", r.URL.Path)
 		require.NoError(t, r.ParseForm())

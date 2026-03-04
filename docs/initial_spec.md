@@ -15,7 +15,7 @@
 ## 3. Authentication & Token Lifecycle
 ### 3.1 Authorization Flow
 1. `whoopy auth login` starts an Authorization Code with PKCE flow.
-2. CLI opens the default browser pointing to WHOOP’s `/oauth/oauth2/auth` endpoint with scopes `offline access.read recovery.read cycle.read workout.read sleep.read` (adjust as needed).
+2. CLI opens the default browser pointing to WHOOP’s `/oauth/oauth2/auth` endpoint with scopes `offline read:profile read:body_measurement read:cycles read:recovery read:sleep read:workout` (adjust as needed).
 3. CLI spins up a temporary localhost callback (preferred) to capture the redirect; provide a fallback copy-paste code path for headless environments.
 4. Exchange the returned code for access + refresh tokens via `/oauth/oauth2/token`.
 

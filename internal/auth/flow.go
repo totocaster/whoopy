@@ -23,11 +23,12 @@ const (
 
 var defaultScopes = []string{
 	"offline",
-	"access.read",
-	"cycle.read",
-	"recovery.read",
-	"sleep.read",
-	"workout.read",
+	"read:profile",
+	"read:body_measurement",
+	"read:cycles",
+	"read:recovery",
+	"read:sleep",
+	"read:workout",
 }
 
 // Flow orchestrates OAuth interactions with WHOOP.

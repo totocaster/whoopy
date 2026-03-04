@@ -35,7 +35,7 @@ func TestAuthManualFlow(t *testing.T) {
 			require.Equal(t, "code-123", r.Form.Get("code"))
 			require.Equal(t, "http://127.0.0.1:8735/oauth/callback", r.Form.Get("redirect_uri"))
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"access_token":"token-access","refresh_token":"token-refresh","token_type":"Bearer","expires_in":3600,"scope":"offline sleep.read"}`))
+			w.Write([]byte(`{"access_token":"token-access","refresh_token":"token-refresh","token_type":"Bearer","expires_in":3600,"scope":"offline read:sleep"}`))
 		case "/oauth2/revoke":
 			revokeCount++
 			w.WriteHeader(http.StatusOK)
