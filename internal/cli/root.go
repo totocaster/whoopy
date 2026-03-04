@@ -8,7 +8,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:           "whoopy",
-	Short:         "Official WHOOP data CLI written in Go",
+	Short:         "Unofficial WHOOP data CLI written in Go",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
