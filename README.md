@@ -1,19 +1,19 @@
-# whoopy
+# Whoopy CLI
 
 [![Release](https://img.shields.io/github/v/release/totocaster/whoopy)](https://github.com/totocaster/whoopy/releases)
 [![Build](https://github.com/totocaster/whoopy/actions/workflows/release.yml/badge.svg)](https://github.com/totocaster/whoopy/actions/workflows/release.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/totocaster/whoopy)](https://go.dev/)
 [![License](https://img.shields.io/github/license/totocaster/whoopy)](LICENSE)
 
-Official WHOOP data CLI written in Go. whoopy wraps WHOOP’s OAuth flow and developer v2 APIs so automations, dashboards, and AI agents can pull workouts, sleep, recovery, and stats securely from the terminal.
+Unofficial WHOOP data CLI written in Go. `whoopy` wraps WHOOP’s OAuth flow and developer v2 APIs so humans, automations, dashboards, and AI agents can pull workouts, sleep, recovery, and stats securely from the terminal.
 
 ## Highlights
 
-- 🔐 **First-party OAuth** – secure PKCE login, token persistence under `~/.config/whoopy`, automatic refresh, and one-click logout.
-- 📦 **Deterministic outputs** – JSON by default for scripts, readable tables behind `--text`, and stable schemas documented in `docs/initial_spec.md`.
 - 🏋️ **Full activity coverage** – profile, workouts (list/view/export), sleep, recovery, cycles, and day-level stats.
 - 📊 **Daily dashboards** – `whoopy stats daily` aggregates workouts, recovery, sleep, and strain in one shot.
 - 🛠 **Diagnostics built in** – `whoopy diag` surfaces config/tokens/API health for quick troubleshooting.
+- 📦 **Deterministic outputs** – JSON by default for scripts, readable tables behind `--text`.
+- 🔐 **First-party OAuth** – secure PKCE login, token persistence under `~/.config/whoopy`, automatic refresh, and one-click logout.
 - 🧰 **Agent-friendly UX** – consistent flags, quiet success, non-zero exit codes on errors, and installable binaries for macOS/Linux arm64 + amd64.
 
 ## Installation
@@ -155,12 +155,6 @@ whoopy stats daily --date 2026-03-03 --text
 
 Use this command before filing bugs or when running on new machines to confirm tokens are valid.
 
-## Releases & Versioning
-
-- Semantic versioning with tags `vMAJOR.MINOR.PATCH`.
-- GoReleaser builds macOS/Linux binaries (arm64 + amd64), publishes GitHub Releases, and updates the Homebrew tap (`totocaster/homebrew-tap`).
-- Release process is documented in [RELEASE_SETUP.md](RELEASE_SETUP.md). In short: tag `vX.Y.Z`, push, watch the `Release` workflow, then `brew install whoopy` to smoke test.
-
 ## Development
 
 ```bash
@@ -179,4 +173,4 @@ See [docs/initial_spec.md](docs/initial_spec.md) for deeper architectural notes 
 
 ## License
 
-MIT © [toto](https://github.com/totocaster)
+MIT © 2026 [Toto Tvalavadze](https://ttvl.co)
