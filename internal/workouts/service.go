@@ -10,7 +10,7 @@ import (
 	"github.com/toto/whoopy/internal/api"
 )
 
-const workoutsPath = "/workout"
+const workoutsPath = "/activity/workout"
 
 // Service fetches workout data from WHOOP's developer API.
 type Service struct {
