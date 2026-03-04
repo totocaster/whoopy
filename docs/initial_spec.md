@@ -87,6 +87,12 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Every `list` command paginates automatically; support `--cursor <token>` for manual control.
 - `--text` renders aligned tables; JSON output includes metadata (`source`, `generated_at`, `pagination`).
 
+### Shared Collection Plumbing (2026-03-04)
+- Added `internal/api.ListOptions` to centralize WHOOP collection parameters (`start`, `end`, `limit`, `nextToken`). Helpers validate ranges, format timestamps as RFC 3339, and attach values to `url.Values` before every request. This matches the official pagination contract (`nextToken` query param + `next_token` response field) described in https://developer.whoop.com/docs/developing/overview#tag/Workout/operation/getWorkoutCollection.
+- Created a generic `internal/api.Page[T]` struct with `records` + `next_token` to decode all collection endpoints consistently while exposing a `HasNext()` helper for auto-pagination loops.
+- Introduced `internal/cli/addListFlags` + `parseListOptions` so every list command automatically advertises `--start`, `--end`, `--limit`, and `--cursor` flags, aligning with clig.dev guidance about predictable flag shapes. `--start/--end` accept RFC 3339 or `YYYY-MM-DD` (interpreted as UTC midnight) and pipe into `api.ListOptions`.
+- Flag parsing emits user-friendly errors when the range is inverted or when the limit is negative, preventing wasted WHOOP API calls and ensuring commands fail fast before any network traffic.
+
 ## 7. CLI UX Principles
 - Follow the recommendations in https://clig.dev/:
   - Provide concise `whoopy --help` plus per-command help with examples.
