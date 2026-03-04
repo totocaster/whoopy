@@ -47,8 +47,8 @@ type Session struct {
 
 // Score contains the performance metrics for a sleep session.
 type Score struct {
-	SleepPerformancePercentage *int         `json:"sleep_performance_percentage,omitempty"`
-	SleepConsistencyPercentage *int         `json:"sleep_consistency_percentage,omitempty"`
+	SleepPerformancePercentage *float64     `json:"sleep_performance_percentage,omitempty"`
+	SleepConsistencyPercentage *float64     `json:"sleep_consistency_percentage,omitempty"`
 	RespiratoryRate            *float64     `json:"respiratory_rate,omitempty"`
 	SleepEfficiencyPercentage  *float64     `json:"sleep_efficiency_percentage,omitempty"`
 	StageSummary               StageSummary `json:"stage_summary"`
@@ -122,8 +122,8 @@ type sessionRecord struct {
 }
 
 type sleepScore struct {
-	SleepPerformancePercentage *int          `json:"sleep_performance_percentage"`
-	SleepConsistencyPercentage *int          `json:"sleep_consistency_percentage"`
+	SleepPerformancePercentage *float64      `json:"sleep_performance_percentage"`
+	SleepConsistencyPercentage *float64      `json:"sleep_consistency_percentage"`
 	RespiratoryRate            *float64      `json:"respiratory_rate"`
 	SleepEfficiencyPercentage  *float64      `json:"sleep_efficiency_percentage"`
 	StageSummary               *stageSummary `json:"stage_summary"`

@@ -26,7 +26,7 @@ func TestServiceListParsesSleep(t *testing.T) {
 				CreatedAt:  "2026-03-04T00:05:00Z",
 				UpdatedAt:  "2026-03-04T08:00:00Z",
 				Score: &sleepScore{
-					SleepPerformancePercentage: intPtr(92),
+					SleepPerformancePercentage: floatPtr(92),
 					RespiratoryRate:            floatPtr(14.5),
 					StageSummary: &stageSummary{
 						TotalInBedTimeMilli:      int64Ptr(28000000),

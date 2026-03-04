@@ -21,7 +21,7 @@ func TestSleepListJSONOutput(t *testing.T) {
 					ID:    "sleep-1",
 					Start: time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
 					End:   time.Date(2026, 3, 4, 6, 30, 0, 0, time.UTC),
-					Score: sleep.Score{SleepPerformancePercentage: intPtr(95), RespiratoryRate: floatPtr(14.2)},
+					Score: sleep.Score{SleepPerformancePercentage: floatPtr(95), RespiratoryRate: floatPtr(14.2)},
 				},
 			},
 		}, nil
@@ -42,8 +42,8 @@ func TestSleepViewTextOutput(t *testing.T) {
 			End:        time.Date(2026, 3, 5, 8, 15, 0, 0, time.UTC),
 			ScoreState: "SCORED",
 			Score: sleep.Score{
-				SleepPerformancePercentage: intPtr(88),
-				SleepConsistencyPercentage: intPtr(92),
+				SleepPerformancePercentage: floatPtr(88),
+				SleepConsistencyPercentage: floatPtr(92),
 				RespiratoryRate:            floatPtr(13.7),
 				StageSummary: sleep.StageSummary{
 					TotalInBedTimeMilli:      int64Ptr(28000000),
@@ -55,6 +55,6 @@ func TestSleepViewTextOutput(t *testing.T) {
 
 	output := runCLICommand(t, []string{"sleep", "view", "sleep-2", "--text"}, "")
 	require.Contains(t, output, "ID: sleep-2")
-	require.Contains(t, output, "Performance: 88")
+	require.Contains(t, output, "Performance: 88.0")
 	require.Contains(t, output, "In Bed:")
 }

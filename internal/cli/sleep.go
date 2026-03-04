@@ -117,12 +117,12 @@ func formatSleepListText(result *sleep.ListResult) string {
 	}
 	var b strings.Builder
 	tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "Start\tDuration\tPerf%\tResp\tNap\tID")
+    fmt.Fprintln(tw, "Start\tDuration\tPerf%\tResp\tNap\tID")
 	for _, sess := range result.Sleeps {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			formatTimestamp(sess.Start),
 			formatDuration(sess.Start, sess.End),
-			formatIntPtr(sess.Score.SleepPerformancePercentage),
+            formatFloatPtr(sess.Score.SleepPerformancePercentage, 1),
 			formatFloatPtr(sess.Score.RespiratoryRate, 1),
 			formatBool(sess.Nap),
 			sess.ID,
@@ -147,8 +147,8 @@ func formatSleepDetailText(sess *sleep.Session) string {
 	fmt.Fprintf(&b, "End: %s\n", formatTimestamp(sess.End))
 	fmt.Fprintf(&b, "Duration: %s\n", formatDuration(sess.Start, sess.End))
 	fmt.Fprintf(&b, "Nap: %s\n", formatBool(sess.Nap))
-	fmt.Fprintf(&b, "Performance: %s %%\n", formatIntPtr(sess.Score.SleepPerformancePercentage))
-	fmt.Fprintf(&b, "Consistency: %s %%\n", formatIntPtr(sess.Score.SleepConsistencyPercentage))
+    fmt.Fprintf(&b, "Performance: %s %%\n", formatFloatPtr(sess.Score.SleepPerformancePercentage, 1))
+    fmt.Fprintf(&b, "Consistency: %s %%\n", formatFloatPtr(sess.Score.SleepConsistencyPercentage, 1))
 	fmt.Fprintf(&b, "Respiratory Rate: %s br/min\n", formatFloatPtr(sess.Score.RespiratoryRate, 1))
 	fmt.Fprintf(&b, "Efficiency: %s %%\n", formatFloatPtr(sess.Score.SleepEfficiencyPercentage, 1))
 	fmt.Fprintf(&b, "Stage Summary:\n")
