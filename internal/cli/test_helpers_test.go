@@ -17,6 +17,13 @@ import (
 
 func runCLICommand(t *testing.T, args []string, input string) string {
 	t.Helper()
+	output, err := runCLICommandWithError(t, args, input)
+	require.NoError(t, err)
+	return output
+}
+
+func runCLICommandWithError(t *testing.T, args []string, input string) (string, error) {
+	t.Helper()
 	var buf strings.Builder
 	rootCmd.SetArgs(args)
 	rootCmd.SetOut(&buf)
@@ -31,8 +38,7 @@ func runCLICommand(t *testing.T, args []string, input string) string {
 	rootCmd.SetErr(os.Stderr)
 	rootCmd.SetArgs(nil)
 	resetCommandFlags(rootCmd)
-	require.NoError(t, err)
-	return buf.String()
+	return buf.String(), err
 }
 
 func setTestConfigDir(t *testing.T) {

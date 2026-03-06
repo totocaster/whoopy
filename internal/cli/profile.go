@@ -25,6 +25,9 @@ var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Profile-related commands",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectUnsupportedHPX(cmd); err != nil {
+			return err
+		}
 		return cmd.Help()
 	},
 }
@@ -33,6 +36,16 @@ var profileShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show WHOOP profile and body measurements",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			summary, err := profileFetchFn(cmd.Context())
+			if err != nil {
+				return err
+			}
+			return emitProfileHPX(cmd.OutOrStdout(), summary)
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

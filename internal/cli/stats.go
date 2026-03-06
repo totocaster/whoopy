@@ -25,6 +25,9 @@ var statsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Aggregated WHOOP statistics",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectUnsupportedHPX(cmd); err != nil {
+			return err
+		}
 		return cmd.Help()
 	},
 }
@@ -33,6 +36,9 @@ var statsDailyCmd = &cobra.Command{
 	Use:   "daily",
 	Short: "Show workouts, recovery, sleep, and cycles for a single day",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectUnsupportedHPX(cmd); err != nil {
+			return err
+		}
 		dateValue, err := cmd.Flags().GetString("date")
 		if err != nil {
 			return err

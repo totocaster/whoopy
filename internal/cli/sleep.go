@@ -33,6 +33,9 @@ var sleepCmd = &cobra.Command{
 	Use:   "sleep",
 	Short: "Sleep-related commands",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectUnsupportedHPX(cmd); err != nil {
+			return err
+		}
 		return cmd.Help()
 	},
 }
@@ -44,6 +47,16 @@ var sleepListCmd = &cobra.Command{
 		opts, err := parseListOptions(cmd)
 		if err != nil {
 			return err
+		}
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			result, err := sleepListFn(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			return emitSleepResultHPX(cmd.OutOrStdout(), result)
 		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
@@ -71,6 +84,16 @@ var sleepTodayCmd = &cobra.Command{
 	Short: "Show today's sleep sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		opts := todayRangeOptions(25)
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			result, err := sleepListFn(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			return emitSleepResultHPX(cmd.OutOrStdout(), result)
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -97,6 +120,16 @@ var sleepViewCmd = &cobra.Command{
 	Short: "Show a single sleep session",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			sess, err := sleepViewFn(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return emitSleepSessionHPX(cmd.OutOrStdout(), sess)
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

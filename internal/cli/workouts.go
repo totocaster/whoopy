@@ -57,6 +57,9 @@ var workoutsCmd = &cobra.Command{
 	Use:   "workouts",
 	Short: "Workout-related commands",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rejectUnsupportedHPX(cmd); err != nil {
+			return err
+		}
 		return cmd.Help()
 	},
 }
@@ -72,6 +75,19 @@ var workoutsListCmd = &cobra.Command{
 		filters, err := parseWorkoutFilters(cmd)
 		if err != nil {
 			return err
+		}
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			result, err := workoutsListFn(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			if result != nil {
+				result.Workouts = filterWorkouts(result.Workouts, filters)
+			}
+			return emitWorkoutResultHPX(cmd.OutOrStdout(), result)
 		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
@@ -106,6 +122,19 @@ var workoutsTodayCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			result, err := workoutsListFn(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			if result != nil {
+				result.Workouts = filterWorkouts(result.Workouts, filters)
+			}
+			return emitWorkoutResultHPX(cmd.OutOrStdout(), result)
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -136,6 +165,16 @@ var workoutsViewCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
+		if err := rejectHPXConflicts(cmd, "text"); err != nil {
+			return err
+		}
+		if isHPX(cmd) {
+			workout, err := workoutsViewFn(cmd.Context(), id)
+			if err != nil {
+				return err
+			}
+			return emitWorkoutHPX(cmd.OutOrStdout(), workout)
+		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -176,6 +215,18 @@ var workoutsExportCmd = &cobra.Command{
 		outputPath, err := cmd.Flags().GetString("output")
 		if err != nil {
 			return err
+		}
+		if isHPX(cmd) {
+			if err := rejectHPXConflicts(cmd, "format"); err != nil {
+				return err
+			}
+			if strings.TrimSpace(outputPath) != "" && strings.TrimSpace(outputPath) != "-" {
+				return fmt.Errorf("--output cannot be combined with --%s", flagHPX)
+			}
+			writer := newHPXWriter(cmd.OutOrStdout())
+			return iterateWorkouts(cmd.Context(), opts, filters, func(workout workouts.Workout) error {
+				return writer.writeWorkout(workout)
+			})
 		}
 		return exportWorkouts(cmd.Context(), opts, filters, format, outputPath, cmd.OutOrStdout())
 	},

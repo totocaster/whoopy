@@ -13,6 +13,7 @@ Unofficial WHOOP data CLI written in Go. `whoopy` wraps WHOOP’s OAuth flow and
 - 📊 **Daily dashboards** – `whoopy stats daily` aggregates workouts, recovery, sleep, and strain in one shot.
 - 🛠 **Diagnostics built in** – `whoopy diag` surfaces config/tokens/API health for quick troubleshooting.
 - 📦 **Deterministic outputs** – JSON by default for scripts, readable tables behind `--text`.
+- 🔄 **HyperContext-ready export** – `whoopy --hpx ...` emits canonical HyperContext NDJSON for profile, sleep, recovery, cycles, and workouts.
 - 🔐 **First-party OAuth** – secure PKCE login, token persistence under `~/.config/whoopy`, automatic refresh, and one-click logout.
 - 🧰 **Agent-friendly UX** – consistent flags, quiet success, non-zero exit codes on errors, and installable binaries for macOS/Linux arm64 + amd64.
 
@@ -102,7 +103,7 @@ Environment overrides:
 
 ## Usage Overview
 
-whoopy defaults to JSON output. Append `--text` for aligned tables or `| jq` for structured piping. All list commands accept `--start`, `--end`, `--limit`, and `--cursor` via shared pagination flags. Dates accept either `YYYY-MM-DD` or RFC3339 timestamps.
+whoopy defaults to JSON output. Append `--text` for aligned tables or `| jq` for structured piping. All list commands accept `--start`, `--end`, `--limit`, and `--cursor` via shared pagination flags, plus bounded-export aliases `--since`, `--until`, and `--last`. Dates accept either `YYYY-MM-DD` or RFC3339 timestamps.
 
 ### Core commands
 
@@ -110,7 +111,9 @@ whoopy defaults to JSON output. Append `--text` for aligned tables or `| jq` for
 | --- | --- |
 | `whoopy auth login/status/logout` | PKCE login, show token expiry + scopes, or revoke local tokens. |
 | `whoopy profile show [--text]` | Basic profile plus body measurements. |
+| `whoopy --hpx profile show` | Emit HyperContext metrics such as `body.weight_kg` and derived BMI when measurement timestamps exist. |
 | `whoopy workouts list [filters]` | List workouts from `/activity/workout`; client-side filters `--sport`, `--min-strain`, `--max-strain`. |
+| `whoopy --hpx workouts list/view/export` | Emit workout signposts plus canonical session metrics (`duration`, `strain`, HR, kilojoules, derived kcal). |
 | `whoopy workouts view <id>` | Detailed metrics for a single workout. |
 | `whoopy workouts today` | Convenience alias for the current calendar day. |
 | `whoopy workouts export [--format jsonl|csv] [--output PATH|-]` | Auto-paginates through WHOOP workouts and streams JSON Lines or CSV. |
@@ -133,6 +136,16 @@ whoopy workouts list --start 2026-03-01 --end 2026-03-04 | jq '.workouts[].score
 # Human-readable sleep summary
 whoopy sleep today --text
 
+# HyperContext import for the last 10 days of sleep sessions
+whoopy --hpx sleep list --last 10d | hpx import
+
+# HyperContext import for workouts, recovery, and cycles
+{
+  whoopy --hpx workouts list --since 2026-03-01
+  whoopy --hpx recovery list --since 2026-03-01
+  whoopy --hpx cycles list --since 2026-03-01
+} | hpx import
+
 # Filter workouts before exporting
 whoopy workouts export \
   --start 2026-02-01 --end 2026-02-29 \
@@ -144,6 +157,21 @@ whoopy workouts export \
 # Daily dashboard
 whoopy stats daily --date 2026-03-03 --text
 ```
+
+## HyperContext Export
+
+`whoopy --hpx ...` switches supported data commands from WHOOP-shaped JSON/text into canonical HyperContext NDJSON:
+
+- Supported commands: `profile show`, `sleep list/view/today`, `recovery list/view/today`, `cycles list/view`, `workouts list/view/today/export`
+- Output contract: one JSON object per line on stdout, no tables or banners, `source` fixed to `whoop`, deterministic `origin_id`
+- Session exports emit signposts before metrics so the stream can pipe directly into `hpx import`
+- Current mappings cover registered HyperContext keys such as `sleep.duration_ms`, `recovery.score_pct`, `strain.day_score`, `workout.kilojoules`, and `body.weight_kg`
+
+Bounded export guidance:
+
+- Use `--since` / `--until` or the existing `--start` / `--end` flags for explicit windows
+- Use `--last 10d` for overlap-friendly recurring imports
+- `--updated-since` is intentionally rejected because WHOOP’s public endpoints do not expose a reliable updated-time filter
 
 ## Diagnostics
 
