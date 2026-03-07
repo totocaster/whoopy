@@ -51,9 +51,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show build version information",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		fmt.Fprintf(cmd.OutOrStdout(), "whoopy %s\n", currentBuild.version)
 		fmt.Fprintf(cmd.OutOrStdout(), "commit: %s\n", currentBuild.commit)
 		fmt.Fprintf(cmd.OutOrStdout(), "built: %s\n", currentBuild.date)

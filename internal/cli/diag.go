@@ -33,9 +33,6 @@ var diagCmd = &cobra.Command{
 	Use:   "diag",
 	Short: "Print configuration, token, and API health diagnostics",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

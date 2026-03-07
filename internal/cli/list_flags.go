@@ -29,10 +29,20 @@ var (
 )
 
 func addListFlags(cmd *cobra.Command) {
+	addSharedListFlags(cmd, true)
+}
+
+func addListWindowFlags(cmd *cobra.Command) {
+	addSharedListFlags(cmd, false)
+}
+
+func addSharedListFlags(cmd *cobra.Command, includeCursor bool) {
 	cmd.Flags().String(listFlagStart, "", "Start timestamp (RFC3339 or YYYY-MM-DD, UTC if date only)")
 	cmd.Flags().String(listFlagEnd, "", "End timestamp (RFC3339 or YYYY-MM-DD, UTC if date only)")
 	cmd.Flags().Int(listFlagLimit, 0, "Maximum records to return (0 leaves WHOOP default)")
-	cmd.Flags().String(listFlagCursor, "", "Opaque cursor token to resume pagination")
+	if includeCursor {
+		cmd.Flags().String(listFlagCursor, "", "Opaque cursor token to resume pagination")
+	}
 	cmd.Flags().String(listFlagSince, "", "Alias for --start; useful for bounded exports")
 	cmd.Flags().String(listFlagUntil, "", "Alias for --end; useful for bounded exports")
 	cmd.Flags().String(listFlagLast, "", "Relative export window such as 3d, 10d, or 1mo")
@@ -40,35 +50,46 @@ func addListFlags(cmd *cobra.Command) {
 }
 
 func parseListOptions(cmd *cobra.Command) (*api.ListOptions, error) {
-	startVal, err := cmd.Flags().GetString(listFlagStart)
+	return parseListOptionsForCommand(cmd, true)
+}
+
+func parseListWindowOptions(cmd *cobra.Command) (*api.ListOptions, error) {
+	return parseListOptionsForCommand(cmd, false)
+}
+
+func parseListOptionsForCommand(cmd *cobra.Command, allowCursor bool) (*api.ListOptions, error) {
+	startVal, err := getOptionalStringFlag(cmd, listFlagStart)
 	if err != nil {
 		return nil, err
 	}
-	endVal, err := cmd.Flags().GetString(listFlagEnd)
+	endVal, err := getOptionalStringFlag(cmd, listFlagEnd)
 	if err != nil {
 		return nil, err
 	}
-	limit, err := cmd.Flags().GetInt(listFlagLimit)
+	limit, err := getOptionalIntFlag(cmd, listFlagLimit)
 	if err != nil {
 		return nil, err
 	}
-	cursor, err := cmd.Flags().GetString(listFlagCursor)
+	cursor := ""
+	if allowCursor {
+		cursor, err = getOptionalStringFlag(cmd, listFlagCursor)
+		if err != nil {
+			return nil, err
+		}
+	}
+	sinceVal, err := getOptionalStringFlag(cmd, listFlagSince)
 	if err != nil {
 		return nil, err
 	}
-	sinceVal, err := cmd.Flags().GetString(listFlagSince)
+	untilVal, err := getOptionalStringFlag(cmd, listFlagUntil)
 	if err != nil {
 		return nil, err
 	}
-	untilVal, err := cmd.Flags().GetString(listFlagUntil)
+	lastVal, err := getOptionalStringFlag(cmd, listFlagLast)
 	if err != nil {
 		return nil, err
 	}
-	lastVal, err := cmd.Flags().GetString(listFlagLast)
-	if err != nil {
-		return nil, err
-	}
-	updatedSinceVal, err := cmd.Flags().GetString(listFlagUpdatedSince)
+	updatedSinceVal, err := getOptionalStringFlag(cmd, listFlagUpdatedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +158,20 @@ func parseListOptions(cmd *cobra.Command) (*api.ListOptions, error) {
 		return nil, err
 	}
 	return opts, nil
+}
+
+func getOptionalStringFlag(cmd *cobra.Command, name string) (string, error) {
+	if cmd == nil || cmd.Flags().Lookup(name) == nil {
+		return "", nil
+	}
+	return cmd.Flags().GetString(name)
+}
+
+func getOptionalIntFlag(cmd *cobra.Command, name string) (int, error) {
+	if cmd == nil || cmd.Flags().Lookup(name) == nil {
+		return 0, nil
+	}
+	return cmd.Flags().GetInt(name)
 }
 
 var timeLayouts = []string{

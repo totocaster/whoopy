@@ -31,9 +31,6 @@ var cyclesCmd = &cobra.Command{
 	Use:   "cycles",
 	Short: "Cycle-related commands",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		return cmd.Help()
 	},
 }
@@ -45,16 +42,6 @@ var cyclesListCmd = &cobra.Command{
 		opts, err := parseListOptions(cmd)
 		if err != nil {
 			return err
-		}
-		if err := rejectHPXConflicts(cmd, "text"); err != nil {
-			return err
-		}
-		if isHPX(cmd) {
-			result, err := cyclesListFn(cmd.Context(), opts)
-			if err != nil {
-				return err
-			}
-			return emitCycleResultHPX(cmd.OutOrStdout(), result)
 		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
@@ -82,16 +69,6 @@ var cyclesViewCmd = &cobra.Command{
 	Short: "Show a single cycle by WHOOP ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectHPXConflicts(cmd, "text"); err != nil {
-			return err
-		}
-		if isHPX(cmd) {
-			cycle, err := cyclesViewFn(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return emitCycleHPX(cmd.OutOrStdout(), cycle)
-		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

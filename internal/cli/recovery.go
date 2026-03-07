@@ -33,9 +33,6 @@ var recoveryCmd = &cobra.Command{
 	Use:   "recovery",
 	Short: "Recovery-related commands",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		return cmd.Help()
 	},
 }
@@ -47,16 +44,6 @@ var recoveryListCmd = &cobra.Command{
 		opts, err := parseListOptions(cmd)
 		if err != nil {
 			return err
-		}
-		if err := rejectHPXConflicts(cmd, "text"); err != nil {
-			return err
-		}
-		if isHPX(cmd) {
-			result, err := recoveryListFn(cmd.Context(), opts)
-			if err != nil {
-				return err
-			}
-			return emitRecoveryResultHPX(cmd.Context(), cmd.OutOrStdout(), result, cyclesViewFn)
 		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
@@ -84,16 +71,6 @@ var recoveryTodayCmd = &cobra.Command{
 	Short: "Show today's recovery scores",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		opts := todayRangeOptions(25)
-		if err := rejectHPXConflicts(cmd, "text"); err != nil {
-			return err
-		}
-		if isHPX(cmd) {
-			result, err := recoveryListFn(cmd.Context(), opts)
-			if err != nil {
-				return err
-			}
-			return emitRecoveryResultHPX(cmd.Context(), cmd.OutOrStdout(), result, cyclesViewFn)
-		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err
@@ -120,16 +97,6 @@ var recoveryViewCmd = &cobra.Command{
 	Short: "Show recovery for a specific cycle",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectHPXConflicts(cmd, "text"); err != nil {
-			return err
-		}
-		if isHPX(cmd) {
-			rec, err := recoveryViewFn(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return emitRecoveryHPX(cmd.Context(), cmd.OutOrStdout(), rec, cyclesViewFn)
-		}
 		textMode, err := cmd.Flags().GetBool("text")
 		if err != nil {
 			return err

@@ -12,9 +12,6 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		return cmd.Help()
 	},
 }

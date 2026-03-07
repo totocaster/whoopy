@@ -17,10 +17,10 @@
 - Recovery and sleep each gained `today` shortcuts mirroring the workouts UX for quick daily snapshots.
 - Stats aggregation landed (`whoopy stats daily --date …`) producing JSON/text dashboards by composing cycles/recovery/sleep/workouts.
 - Diagnostics command (`whoopy diag`) now surfaces config/token paths, credential presence, token expiry, and API probe status.
-- Root `--hpx` mode is implemented for supported data commands. It emits canonical HyperContext NDJSON for profile, sleep, recovery, cycles, and workouts, using deterministic `origin_id` values and stable `source = "whoop"`.
+- Root `whoopy hpx export` command is the HPX surface. It auto-paginates profile, sleep, cycles, recovery, and workouts with shared time-window flags, deduplicates overlapping recovery-window signposts across cycles + recovery, and populates metric `ts` with actual measurement timestamps instead of empty strings.
 - Shared bounded-export aliases `--since`, `--until`, and `--last` are available on list-style commands. `--updated-since` remains intentionally unsupported because WHOOP does not expose a trustworthy updated-time filter.
 - Release tooling added: `.goreleaser.yml`, Homebrew tap config, and Release workflow ready for v0.1.0 (see `RELEASE_SETUP.md`).
-- Next up: help-text/examples polish for the new HPX mode, any HyperContext schema expansion for currently unregistered WHOOP fields, and any remaining distribution niceties (e.g., Windows builds).
+- Next up: any further HyperContext schema expansion for currently unregistered WHOOP fields, and any remaining distribution niceties (e.g., Windows builds).
 
 ## Testing Checklist
 - `go test ./...` before every commit.

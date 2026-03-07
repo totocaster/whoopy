@@ -55,9 +55,6 @@ var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Manage WHOOP authentication",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		return cmd.Help()
 	},
 }
@@ -66,9 +63,6 @@ var authLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Launch OAuth flow and store tokens",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
 		defer cancel()
 
@@ -169,9 +163,6 @@ var authStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show token expiration info",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		if _, err := cmd.Flags().GetBool("text"); err != nil {
 			return err
 		}
@@ -200,9 +191,6 @@ var authLogoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Revoke tokens and clear local cache",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := rejectUnsupportedHPX(cmd); err != nil {
-			return err
-		}
 		cfg, err := config.Load()
 		if err != nil {
 			return err
