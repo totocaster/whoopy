@@ -339,7 +339,7 @@ func (w *hpxWriter) writeRecovery(rec recovery.Recovery, cycle *cycles.Cycle) er
 func (w *hpxWriter) writeCycle(cycle cycles.Cycle) error {
 	startID := fmt.Sprintf("recovery-window-%d-start", cycle.ID)
 	signpostID := stringPtr(startID)
-	metricTS := cycleMetricTimestamp(cycle)
+	metricTS := cycleStrainMetricTimestamp(cycle)
 	data := recoveryWindowData(&cycle)
 	if !cycle.Start.IsZero() {
 		if err := w.writeSignpost(hpxSignpostRecord{
@@ -509,6 +509,10 @@ func recoveryMetricTimestamp(rec recovery.Recovery, cycle *cycles.Cycle) time.Ti
 
 func cycleMetricTimestamp(cycle cycles.Cycle) time.Time {
 	return firstTimestamp(cycle.End, cycle.Start, cycle.UpdatedAt, cycle.CreatedAt)
+}
+
+func cycleStrainMetricTimestamp(cycle cycles.Cycle) time.Time {
+	return firstTimestamp(cycle.Start, cycle.End, cycle.UpdatedAt, cycle.CreatedAt)
 }
 
 func firstTimestamp(values ...time.Time) time.Time {

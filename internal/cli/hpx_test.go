@@ -124,6 +124,28 @@ func TestWriteRecoveryHPXUsesCycleContext(t *testing.T) {
 	require.Equal(t, "2026-03-06T09:00:00Z", score["ts"])
 }
 
+func TestWriteCycleHPXUsesCycleStartTimestampForDayStrain(t *testing.T) {
+	output := encodeHPXRecords(t, func(w *hpxWriter) error {
+		return w.writeCycle(cycles.Cycle{
+			ID:             12,
+			Start:          time.Date(2026, 3, 5, 22, 0, 0, 0, time.UTC),
+			End:            time.Date(2026, 3, 6, 9, 0, 0, 0, time.UTC),
+			TimezoneOffset: "-05:00",
+			ScoreState:     "SCORED",
+			Score: cycles.Score{
+				Strain: 14.3,
+			},
+		})
+	})
+	records := parseNDJSONRecords(t, output)
+
+	score := findRecord(t, records, "table", "metric", "key", "strain.day_score")
+	require.Equal(t, "2026-03-06", score["date"])
+	require.Equal(t, "2026-03-05T22:00:00Z", score["ts"])
+	require.Equal(t, "whoop-cycle-12-strain", score["origin_id"])
+	require.Equal(t, "recovery-window-12-start", score["signpost_id"])
+}
+
 func TestWriteProfileHPXOutput(t *testing.T) {
 	updatedAt := time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC)
 	weight := 70.0
