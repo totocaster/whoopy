@@ -29,35 +29,17 @@ var (
 )
 
 func addListFlags(cmd *cobra.Command) {
-	addSharedListFlags(cmd, true)
-}
-
-func addListWindowFlags(cmd *cobra.Command) {
-	addSharedListFlags(cmd, false)
-}
-
-func addSharedListFlags(cmd *cobra.Command, includeCursor bool) {
 	cmd.Flags().String(listFlagStart, "", "Start timestamp (RFC3339 or YYYY-MM-DD, UTC if date only)")
 	cmd.Flags().String(listFlagEnd, "", "End timestamp (RFC3339 or YYYY-MM-DD, UTC if date only)")
 	cmd.Flags().Int(listFlagLimit, 0, "Maximum records to return (0 leaves WHOOP default)")
-	if includeCursor {
-		cmd.Flags().String(listFlagCursor, "", "Opaque cursor token to resume pagination")
-	}
-	cmd.Flags().String(listFlagSince, "", "Alias for --start; useful for bounded exports")
-	cmd.Flags().String(listFlagUntil, "", "Alias for --end; useful for bounded exports")
-	cmd.Flags().String(listFlagLast, "", "Relative export window such as 3d, 10d, or 1mo")
+	cmd.Flags().String(listFlagCursor, "", "Opaque cursor token to resume pagination")
+	cmd.Flags().String(listFlagSince, "", "Alias for --start; useful for bounded date ranges")
+	cmd.Flags().String(listFlagUntil, "", "Alias for --end; useful for bounded date ranges")
+	cmd.Flags().String(listFlagLast, "", "Relative date window such as 3d, 10d, or 1mo")
 	cmd.Flags().String(listFlagUpdatedSince, "", "Requested update-time lower bound (not supported by WHOOP; use --since)")
 }
 
 func parseListOptions(cmd *cobra.Command) (*api.ListOptions, error) {
-	return parseListOptionsForCommand(cmd, true)
-}
-
-func parseListWindowOptions(cmd *cobra.Command) (*api.ListOptions, error) {
-	return parseListOptionsForCommand(cmd, false)
-}
-
-func parseListOptionsForCommand(cmd *cobra.Command, allowCursor bool) (*api.ListOptions, error) {
 	startVal, err := getOptionalStringFlag(cmd, listFlagStart)
 	if err != nil {
 		return nil, err
@@ -70,12 +52,9 @@ func parseListOptionsForCommand(cmd *cobra.Command, allowCursor bool) (*api.List
 	if err != nil {
 		return nil, err
 	}
-	cursor := ""
-	if allowCursor {
-		cursor, err = getOptionalStringFlag(cmd, listFlagCursor)
-		if err != nil {
-			return nil, err
-		}
+	cursor, err := getOptionalStringFlag(cmd, listFlagCursor)
+	if err != nil {
+		return nil, err
 	}
 	sinceVal, err := getOptionalStringFlag(cmd, listFlagSince)
 	if err != nil {

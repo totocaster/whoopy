@@ -4,7 +4,7 @@
 - Replace the existing Bun/TypeScript `whoop-cli` with a cross-platform Go CLI (working name: `whoopy`).
 - Use WHOOP’s **official OAuth 2.0** developer platform instead of reverse-engineered mobile endpoints.
 - Primary goals: one-time OAuth login with refresh-token persistence, stable JSON/text outputs for automation, and feature parity (plus expansion) with the current CLI.
-- Current status (Mar 7, 2026): Core WHOOP data commands, diagnostics, stats aggregation, workouts export, and native HyperContext NDJSON export via `whoopy hpx export` are implemented. Remaining work is mostly incremental polish and any future schema/export expansion.
+- Current status (Mar 7, 2026): Core WHOOP data commands, diagnostics, stats aggregation, and workouts export are implemented. Remaining work is mostly incremental polish and distribution follow-through.
 
 ## 2. Guiding Objectives
 1. **Credential safety** – never store raw passwords; rely on WHOOP-issued refresh tokens obtained via the Authorization Code flow with `offline` scope.
@@ -51,8 +51,7 @@
 - `whoopy workouts export` streams workouts over any range as either JSON Lines (default) or CSV, auto-paginating via `next_token` and applying the same sport/strain filters as `workouts list`. Users can send output to stdout or `--output <path>` for scripts.
 - `whoopy diag [--text]` now prints config + token file locations, credential presence, token freshness, and a lightweight `/user/profile/basic` probe so users can quickly see whether they're authenticated and whether the API is reachable.
 - Build metadata (`whoopy version` / `whoopy --version`) follows stamp’s ldflag strategy so tagged releases surface SemVer, commit SHA, and build date.
-- New `whoopy hpx export` auto-paginates profile, sleep, cycles, recovery, and workouts into one canonical HyperContext NDJSON stream. It applies one shared bounded window across WHOOP collections, deduplicates overlapping `recovery_window` signposts across cycles + recovery, and now populates metric `ts` with actual measurement timestamps instead of empty strings.
-- Shared bounded-export aliases `--since`, `--until`, and `--last` now complement `--start/--end` on list-style commands and the new `whoopy hpx export` root command so recurring HPX imports can request overlap windows. `--updated-since` is intentionally rejected because WHOOP’s public API does not expose a reliable updated-time filter.
+- Shared bounded-range aliases `--since`, `--until`, and `--last` now complement `--start/--end` on list-style commands so recurring workflows can request overlap windows more ergonomically. `--updated-since` is intentionally rejected because WHOOP’s public API does not expose a reliable updated-time filter.
 
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
@@ -72,7 +71,6 @@
 | Sleep | `GET /developer/v2/sleep` | Show performance %, stage durations, time in bed, respiratory rate. |
 | Workouts | `GET /developer/v2/workout`, `GET /developer/v2/workout/{id}` | Include sport type, strain, zone durations, distance, calories. |
 | Workouts export | `GET /developer/v2/workout` (auto-paginated) | Dump workouts as JSONL or CSV with client-side sport/strain filters for downstream analytics. |
-| HyperContext export | Existing profile/cycle/recovery/sleep/workout endpoints | `whoopy hpx export` produces canonical HyperContext NDJSON with stable signposts + metrics across the full WHOOP surface. |
 | Diagnostics | none (local + lightweight `/user/profile/basic` probe) | Surface config/token paths, token freshness, and API connectivity via `whoopy diag`. |
 | Daily stats summary | Combination of Cycle + Recovery + Sleep + Workouts for a date | Replicates existing `whoop stats` output with official data. |
 | Webhook helper (stretch) | n/a (polling utility) | CLI subcommand to verify webhook payload handling by developers. |
@@ -82,8 +80,6 @@
 whoopy auth login [--no-browser]
 whoopy auth status
 whoopy auth logout
-
-whoopy hpx export [--since TIME] [--until TIME] [--last 10d]
 
 whoopy profile show [--text]
 
@@ -114,7 +110,7 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Added `internal/api.ListOptions` to centralize WHOOP collection parameters (`start`, `end`, `limit`, `nextToken`). Helpers validate ranges, format timestamps as RFC 3339, and attach values to `url.Values` before every request. This matches the official pagination contract (`nextToken` query param + `next_token` response field) described in https://developer.whoop.com/docs/developing/overview#tag/Workout/operation/getWorkoutCollection.
 - Created a generic `internal/api.Page[T]` struct with `records` + `next_token` to decode all collection endpoints consistently while exposing a `HasNext()` helper for auto-pagination loops.
 - Introduced `internal/cli/addListFlags` + `parseListOptions` so every list command automatically advertises `--start`, `--end`, `--limit`, and `--cursor` flags, aligning with clig.dev guidance about predictable flag shapes. `--start/--end` accept RFC 3339 or `YYYY-MM-DD` (interpreted as UTC midnight) and pipe into `api.ListOptions`.
-- `addListFlags` now also exposes HyperContext-friendly bounded-export aliases: `--since`, `--until`, and `--last`. `--last` understands `h`, `d`, `w`, and `mo` units, while `--updated-since` fails fast with an explicit error so the CLI does not pretend to support a filter the WHOOP API cannot satisfy.
+- `addListFlags` now also exposes bounded-range aliases: `--since`, `--until`, and `--last`. `--last` understands `h`, `d`, `w`, and `mo` units, while `--updated-since` fails fast with an explicit error so the CLI does not pretend to support a filter the WHOOP API cannot satisfy.
 - Flag parsing emits user-friendly errors when the range is inverted or when the limit is negative, preventing wasted WHOOP API calls and ensuring commands fail fast before any network traffic.
 - Added `todayRangeOptions(limit)` helper shared by the new `today` subcommands to encapsulate “local midnight to midnight” math and clamp the limit to a safe default.
 - The workouts export implementation keeps calling `GET /developer/v2/workout` while WHOOP returns `next_token`, streaming each page either as JSON Lines or CSV. Export honors the same client-side sport/strain filters and can target stdout or `--output` paths for automation.
@@ -131,7 +127,6 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Define Go structs mirroring WHOOP v2 schemas; add adapters that map WHOOP fields to CLI-friendly names (e.g., `respiratory_rate` → `respRate`).
 - Stable JSON schema examples should be stored under `docs/examples/*.json`.
 - Include `source_endpoint` metadata for traceability.
-- HyperContext output (`whoopy hpx export`) is the machine-export contract: canonical NDJSON only, one object per line, signposts before dependent metrics, deterministic `origin_id`, non-empty measurement `ts` where WHOOP provides source timestamps, and no human-facing stdout noise.
 - Diagnostics output (`whoopy diag`) should expose three clearly delimited blocks:
   - `config`: absolute path, existence flag, whether client ID/secret/env overrides are set, and the effective API/OAuth/redirect URLs. Do not fail if the file is missing—report the error inline.
   - `tokens`: token file path + existence, last modified timestamp, scopes, expiry timestamp, humanized remaining lifetime, and whether a refresh token is stored.
