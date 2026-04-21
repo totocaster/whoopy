@@ -12,6 +12,10 @@ import (
 )
 
 func TestLoadFromFile(t *testing.T) {
+	t.Setenv("WHOOPY_CLIENT_ID", "")
+	t.Setenv("WHOOPY_CLIENT_SECRET", "")
+	t.Setenv("WHOOP_CLIENT_ID", "")
+	t.Setenv("WHOOP_CLIENT_SECRET", "")
 	dir := filepath.Join(t.TempDir(), "whoopy")
 	paths.SetConfigDirOverride(dir)
 	t.Cleanup(func() { paths.SetConfigDirOverride("") })
@@ -55,7 +59,26 @@ func TestLoadEnvOverrides(t *testing.T) {
 	require.Equal(t, "http://127.0.0.1:1234/callback", cfg.RedirectURI)
 }
 
+func TestLoadWhoopEnvAliases(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "whoopy")
+	paths.SetConfigDirOverride(dir)
+	t.Cleanup(func() { paths.SetConfigDirOverride("") })
+	t.Setenv("WHOOPY_CLIENT_ID", "")
+	t.Setenv("WHOOPY_CLIENT_SECRET", "")
+	t.Setenv("WHOOP_CLIENT_ID", "whoop-id")
+	t.Setenv("WHOOP_CLIENT_SECRET", "whoop-secret")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Equal(t, "whoop-id", cfg.ClientID)
+	require.Equal(t, "whoop-secret", cfg.ClientSecret)
+}
+
 func TestLoadMissingClientID(t *testing.T) {
+	t.Setenv("WHOOPY_CLIENT_ID", "")
+	t.Setenv("WHOOPY_CLIENT_SECRET", "")
+	t.Setenv("WHOOP_CLIENT_ID", "")
+	t.Setenv("WHOOP_CLIENT_SECRET", "")
 	dir := filepath.Join(t.TempDir(), "whoopy")
 	paths.SetConfigDirOverride(dir)
 	t.Cleanup(func() { paths.SetConfigDirOverride("") })

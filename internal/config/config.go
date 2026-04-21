@@ -77,10 +77,10 @@ func mergeFile(cfg *Config) error {
 }
 
 func mergeEnv(cfg *Config) {
-	if v := strings.TrimSpace(os.Getenv("WHOOPY_CLIENT_ID")); v != "" {
+	if v := firstEnv("WHOOPY_CLIENT_ID", "WHOOP_CLIENT_ID"); v != "" {
 		cfg.ClientID = v
 	}
-	if v := strings.TrimSpace(os.Getenv("WHOOPY_CLIENT_SECRET")); v != "" {
+	if v := firstEnv("WHOOPY_CLIENT_SECRET", "WHOOP_CLIENT_SECRET"); v != "" {
 		cfg.ClientSecret = v
 	}
 	if v := strings.TrimSpace(os.Getenv("WHOOPY_API_BASE_URL")); v != "" {
@@ -92,4 +92,13 @@ func mergeEnv(cfg *Config) {
 	if v := strings.TrimSpace(os.Getenv("WHOOPY_REDIRECT_URI")); v != "" {
 		cfg.RedirectURI = v
 	}
+}
+
+func firstEnv(keys ...string) string {
+	for _, key := range keys {
+		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+			return v
+		}
+	}
+	return ""
 }

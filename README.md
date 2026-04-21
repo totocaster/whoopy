@@ -13,7 +13,7 @@ Unofficial WHOOP data CLI written in Go. `whoopy` wraps WHOOP’s OAuth flow and
 - 📊 **Daily dashboards** – `whoopy stats daily` aggregates workouts, recovery, sleep, and strain in one shot.
 - 🛠 **Diagnostics built in** – `whoopy diag` surfaces config/tokens/API health for quick troubleshooting.
 - 📦 **Deterministic outputs** – JSON by default for scripts, readable tables behind `--text`.
-- 🔐 **First-party OAuth** – secure PKCE login, token persistence under `~/.config/whoopy`, automatic refresh, and one-click logout.
+- 🔐 **First-party OAuth** – secure PKCE login, XDG-aware config/state storage, automatic refresh, and one-click logout.
 - 🧰 **Agent-friendly UX** – consistent flags, quiet success, non-zero exit codes on errors, and installable binaries for macOS/Linux arm64 + amd64.
 
 ## Installation
@@ -66,7 +66,7 @@ oauth_base_url = "https://api.prod.whoop.com/oauth"
 redirect_uri = "http://127.0.0.1:8735/oauth/callback"
 ```
 
-Update the two empty fields with your real credentials. You can also export environment variables (`WHOOPY_CLIENT_ID`, `WHOOPY_CLIENT_SECRET`, etc.) if you prefer not to store secrets on disk.
+Update the two empty fields with your real credentials. You can also export environment variables (`WHOOPY_CLIENT_ID`, `WHOOPY_CLIENT_SECRET`, etc.) if you prefer not to store secrets on disk. `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` are also accepted as aliases.
 
 ### 3. Complete the OAuth flow
 
@@ -74,31 +74,34 @@ Run `whoopy auth login` again after updating the config. By default:
 
 - whoopy spins up a temporary HTTP listener on `127.0.0.1:8735` that matches the redirect URI.
 - Your browser opens to WHOOP’s `/oauth/oauth2/auth` URL. Approve the requested scopes.
-- The CLI receives the authorization code, exchanges it for access + refresh tokens, and writes them to `~/.config/whoopy/tokens.json`.
+- The CLI receives the authorization code, exchanges it for access + refresh tokens, and writes them to `${XDG_STATE_HOME:-~/.local/state}/whoopy/tokens.json` (`%APPDATA%\whoopy\tokens.json` on Windows).
 
 Headless workflows:
 
 - `whoopy auth login --no-browser` prints the URL without trying to open it.
 - `whoopy auth login --manual` or `--code "<redirect-url>"` lets you paste the callback URL instead of running a local listener.
 
-Tokens refresh automatically before expiry (`whoopy auth status` shows the remaining lifetime). `whoopy auth logout` clears the local cache and attempts to revoke the refresh token.
+Tokens refresh automatically before expiry (`whoopy auth status` shows the remaining lifetime). `whoopy auth logout` clears the local cache and best-effort revokes the app’s remote access.
 
-### Config & token locations
+### Config, token, and log locations
 
-| Platform | Config path | Tokens path |
-| --- | --- | --- |
-| macOS / Linux | `${XDG_CONFIG_HOME:-~/.config}/whoopy/config.toml` | `${XDG_CONFIG_HOME:-~/.config}/whoopy/tokens.json` |
-| Windows | `%APPDATA%\whoopy\config.toml` | `%APPDATA%\whoopy\tokens.json` |
+| Platform | Config path | Tokens path | Debug log path |
+| --- | --- | --- | --- |
+| macOS / Linux | `${XDG_CONFIG_HOME:-~/.config}/whoopy/config.toml` | `${XDG_STATE_HOME:-~/.local/state}/whoopy/tokens.json` | `${XDG_STATE_HOME:-~/.local/state}/whoopy/logs/debug.log` |
+| Windows | `%APPDATA%\whoopy\config.toml` | `%APPDATA%\whoopy\tokens.json` | `%APPDATA%\whoopy\logs\debug.log` |
 
-Override both via `WHOOPY_CONFIG_DIR` if you need custom locations (CI/CD, ephemeral environments, etc.).
+`whoopy` automatically migrates legacy token files from the old config-directory location into the state directory on first use.
 
 Environment overrides:
 
 | Variable | Purpose |
 | --- | --- |
 | `WHOOPY_CLIENT_ID`, `WHOOPY_CLIENT_SECRET` | Override config file credentials (e.g., in CI). |
+| `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET` | Accepted aliases for the client credential env vars. |
 | `WHOOPY_API_BASE_URL`, `WHOOPY_OAUTH_BASE_URL`, `WHOOPY_REDIRECT_URI` | Point at staging stacks or custom redirect ports. |
-| `WHOOPY_CONFIG_DIR` | Custom config directory (defaults to XDG `.config/whoopy`). |
+| `WHOOPY_CONFIG_DIR` | Exact config directory to use instead of the default XDG app directory. |
+| `WHOOPY_STATE_DIR` | Exact state directory for tokens and logs instead of the default XDG app directory. |
+| `WHOOPY_DEBUG` | Enable structured debug logging without passing `--debug`. |
 
 ## Usage Overview
 
@@ -151,9 +154,12 @@ whoopy stats daily --date 2026-03-03 --text
 
 - **Config** – absolute path, existence, last modified timestamp, whether client credentials are set, and the effective API/OAuth/redirect URLs.
 - **Tokens** – token file path, scopes, expiry, refresh-token presence, and friendly time-to-expiration.
+- **Logs** – debug log path plus whether a structured debug log file already exists.
 - **API** – health check latency hitting `/user/profile/basic`, plus error messaging when auth/config is incomplete.
 
 Use this command before filing bugs or when running on new machines to confirm tokens are valid.
+
+For auth debugging, run commands with `--debug` and then inspect the log path from `whoopy diag --text`. Refresh requests log the grant type, expiry window decisions, HTTP status, and token rotation events without printing raw token values.
 
 ## Development
 

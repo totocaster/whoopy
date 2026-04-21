@@ -20,24 +20,26 @@
 4. Exchange the returned code for access + refresh tokens via `/oauth/oauth2/token`.
 
 ### 3.2 Token Storage
-- Store tokens in `$XDG_CONFIG_HOME/whoopy/tokens.json` (or `%APPDATA%\\whoopy\\tokens.json` on Windows) with `0600` permissions.
+- Store tokens in `$XDG_STATE_HOME/whoopy/tokens.json` (or `%APPDATA%\\whoopy\\tokens.json` on Windows) with `0600` permissions.
 - Optionally integrate with platform keychains (macOS Keychain, Windows Credential Manager, `libsecret`) when available.
 - Persist metadata: `access_token`, `refresh_token`, `expires_at`, `scope`, `token_type`.
 
 ### 3.3 Refresh Strategy
 - Before each API call: if `now >= expires_at - 60s`, call `/oauth/oauth2/token` with `grant_type=refresh_token`.
+- Include `scope=offline` in refresh requests to match WHOOP’s documented contract.
 - Replace both access and refresh tokens atomically in storage (WHOOP rotates refresh tokens).
-- Log minimal info on disk; prefer structured debug logs via `whoopy --debug`.
+- Log minimal info on disk under `$XDG_STATE_HOME/whoopy/logs/debug.log`; prefer structured debug logs via `whoopy --debug`.
 
 ### 3.4 Logout & Revocation
-- `whoopy auth logout` calls WHOOP’s revocation endpoint (if available) or deletes cached tokens and instructs the user to revoke access from their WHOOP account.
+- `whoopy auth logout` calls WHOOP’s `DELETE /developer/v2/user/access` revocation endpoint (best effort) or deletes cached tokens and instructs the user to revoke access from their WHOOP account.
 - Ensure logout wipes local config directories securely.
 
 ### 3.5 Implementation Status (Mar 4, 2026)
 - `whoopy auth login` implemented with PKCE + Authorization Code flow, local callback server on configurable `redirect_uri`, and flags for `--no-browser`, `--manual`, and `--code` (paste redirect URL manually).
-- `whoopy auth status` reports stored token scopes + expiry; `whoopy auth logout` clears tokens and best-effort revokes refresh tokens.
+- `whoopy auth status` reports stored token scopes + expiry; `whoopy auth logout` clears tokens and best-effort revokes remote access.
 - Config now exposes `oauth_base_url` and `redirect_uri` fields (env overrides: `WHOOPY_OAUTH_BASE_URL`, `WHOOPY_REDIRECT_URI`).
 - Running `whoopy auth login` scaffolds `~/.config/whoopy/config.toml` with sample values if missing and instructs the user to edit it.
+- Tokens now live under XDG state, legacy config-dir token files are migrated automatically, and `whoopy --debug` writes structured auth/refresh logs to the state directory.
 - Foundational unit tests in place for config loading, token storage, and OAuth flow helpers (PKCE generation, token exchange/refresh/logout).
 - Core WHOOP API client implemented (token injection, auto-refresh, 401 retry, 429 backoff, JSON helper) to power upcoming commands.
 - `whoopy profile show` implemented (JSON by default, `--text` for human-readable) fetching `/user/profile/basic` and `/user/measurement/body`.
@@ -56,9 +58,11 @@
 ## 4. Configuration & Environment
 - Require WHOOP-issued **client ID** and **client secret** (if confidential client). Support reading from:
   - `WHOOPY_CLIENT_ID` / `WHOOPY_CLIENT_SECRET`
+  - `WHOOP_CLIENT_ID` / `WHOOP_CLIENT_SECRET` (alias)
   - `$XDG_CONFIG_HOME/whoopy/config.toml`
 - Allow overriding base API URL for testing.
 - Additional overrides: `WHOOPY_OAUTH_BASE_URL` (default `https://api.prod.whoop.com/oauth`) and `WHOOPY_REDIRECT_URI` (default `http://127.0.0.1:8735/oauth/callback`).
+- State overrides: `WHOOPY_STATE_DIR` (exact directory for tokens + logs) with defaults rooted at `$XDG_STATE_HOME` when unset.
 - Global flags: `--json` (default), `--text`, `--pretty`, `--debug`, `--config <path>`.
 
 ## 5. Planned Feature Set
@@ -130,6 +134,7 @@ whoopy stats daily --date YYYY-MM-DD [--text|--json]
 - Diagnostics output (`whoopy diag`) should expose three clearly delimited blocks:
   - `config`: absolute path, existence flag, whether client ID/secret/env overrides are set, and the effective API/OAuth/redirect URLs. Do not fail if the file is missing—report the error inline.
   - `tokens`: token file path + existence, last modified timestamp, scopes, expiry timestamp, humanized remaining lifetime, and whether a refresh token is stored.
+  - `logs`: debug log path + existence, plus last modified timestamp when debug logging has produced a file.
   - `api`: most recent health probe status (`ok` or `error`), latency in milliseconds, and any error message when authentication/config is incomplete. The probe can hit `/user/profile/basic` via the shared API client.
 
 ## 9. Error Handling

@@ -1,6 +1,7 @@
 package tokens_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -65,4 +66,43 @@ func TestStorePath(t *testing.T) {
 	info, err := os.Stat(filepath.Dir(path))
 	require.NoError(t, err)
 	require.True(t, info.IsDir())
+}
+
+func TestStoreMigratesLegacyTokenFile(t *testing.T) {
+	root := t.TempDir()
+	configDir := filepath.Join(root, "config", "whoopy")
+	stateDir := filepath.Join(root, "state", "whoopy")
+	paths.SetConfigDirOverride(configDir)
+	paths.SetStateDirOverride(stateDir)
+	t.Cleanup(func() {
+		paths.SetConfigDirOverride("")
+		paths.SetStateDirOverride("")
+	})
+
+	legacyPath := filepath.Join(configDir, "tokens.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(legacyPath), 0o700))
+
+	token := &tokens.Token{
+		AccessToken:  "legacy-access",
+		RefreshToken: "legacy-refresh",
+		TokenType:    "Bearer",
+		Scope:        []string{"offline"},
+		ExpiresAt:    time.Now().Add(time.Hour).UTC().Round(time.Second),
+	}
+	data, err := json.Marshal(token)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(legacyPath, data, 0o600))
+
+	store, err := tokens.NewStore("")
+	require.NoError(t, err)
+
+	loaded, err := store.Load()
+	require.NoError(t, err)
+	require.Equal(t, token, loaded)
+
+	_, err = os.Stat(legacyPath)
+	require.True(t, os.IsNotExist(err))
+
+	_, err = os.Stat(filepath.Join(stateDir, "tokens.json"))
+	require.NoError(t, err)
 }

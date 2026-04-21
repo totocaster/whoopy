@@ -30,8 +30,10 @@ func TestAuthManualFlow(t *testing.T) {
 			require.Equal(t, "http://127.0.0.1:8735/oauth/callback", r.Form.Get("redirect_uri"))
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"access_token":"token-access","refresh_token":"token-refresh","token_type":"Bearer","expires_in":3600,"scope":"offline read:sleep"}`))
-		case "/oauth2/revoke":
+		case "/user/access":
 			revokeCount++
+			require.Equal(t, http.MethodDelete, r.Method)
+			require.Equal(t, "Bearer token-access", r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
 		default:
 			http.NotFound(w, r)
@@ -42,6 +44,7 @@ func TestAuthManualFlow(t *testing.T) {
 	configContent := `
 client_id = "client-id"
 client_secret = "client-secret"
+api_base_url = "` + server.URL + `"
 oauth_base_url = "` + server.URL + `"
 redirect_uri = "http://127.0.0.1:8735/oauth/callback"
 `
@@ -67,7 +70,7 @@ redirect_uri = "http://127.0.0.1:8735/oauth/callback"
 	require.Contains(t, logoutOut, "Logged out")
 	require.Equal(t, 1, revokeCount)
 
-	tokenFile := filepath.Join(getConfigDir(t), "tokens.json")
+	tokenFile := filepath.Join(getStateDir(t), "tokens.json")
 	_, err := os.Stat(tokenFile)
 	require.True(t, os.IsNotExist(err))
 }

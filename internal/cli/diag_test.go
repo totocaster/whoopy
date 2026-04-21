@@ -40,6 +40,7 @@ client_secret = "def"
 	require.Contains(t, output, "\"client_id_set\": true")
 	require.Contains(t, output, "\"status\": \"ok\"")
 	require.Contains(t, output, "\"scope\": [")
+	require.Contains(t, output, "\"logs\":")
 }
 
 func TestDiagTextOutputWithErrors(t *testing.T) {
@@ -53,6 +54,7 @@ func TestDiagTextOutputWithErrors(t *testing.T) {
 	output := runCLICommand(t, []string{"diag", "--text"}, "")
 	require.Contains(t, output, "Config")
 	require.Contains(t, output, "Tokens")
+	require.Contains(t, output, "Logs")
 	require.Contains(t, output, "API")
 	require.Contains(t, output, "Status: error")
 	require.Contains(t, output, "not authenticated")

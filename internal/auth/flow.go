@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/toto/whoopy/internal/config"
+	"github.com/toto/whoopy/internal/debuglog"
 	"github.com/toto/whoopy/internal/tokens"
 )
 
 const (
-	authPath   = "/oauth2/auth"
-	tokenPath  = "/oauth2/token"
-	revokePath = "/oauth2/revoke"
+	authPath         = "/oauth2/auth"
+	tokenPath        = "/oauth2/token"
+	revokeAccessPath = "/user/access"
 )
 
 var defaultScopes = []string{
@@ -59,8 +60,8 @@ func (f *Flow) tokenEndpoint() string {
 	return f.authURLBase() + tokenPath
 }
 
-func (f *Flow) revokeEndpoint() string {
-	return f.authURLBase() + revokePath
+func (f *Flow) revokeAccessEndpoint() string {
+	return strings.TrimRight(f.cfg.APIBaseURL, "/") + revokeAccessPath
 }
 
 // BuildAuthURL creates the URL users should open to authorize the CLI.
@@ -90,6 +91,7 @@ func (f *Flow) ExchangeCode(ctx context.Context, code, redirectURI string, pkce 
 	if code == "" {
 		return nil, errors.New("authorization code is empty")
 	}
+	debuglog.Info("exchanging authorization code", "redirect_uri", redirectURI, "pkce", pkce != nil)
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
@@ -110,6 +112,7 @@ func (f *Flow) ExchangeCode(ctx context.Context, code, redirectURI string, pkce 
 	if err := f.store.Save(token); err != nil {
 		return nil, err
 	}
+	debuglog.Info("authorization code exchange completed", "expires_at", token.ExpiresAt.UTC().Format(time.RFC3339), "scopes", strings.Join(token.Scope, " "))
 	return token, nil
 }
 
@@ -120,9 +123,11 @@ func (f *Flow) Refresh(ctx context.Context) (*tokens.Token, error) {
 		return nil, err
 	}
 	if current == nil || current.RefreshToken == "" {
+		debuglog.Warn("refresh requested without a stored refresh token")
 		return nil, errors.New("no refresh token available")
 	}
 
+	debuglog.Info("refreshing access token", "expires_at", current.ExpiresAt.UTC().Format(time.RFC3339), "scopes", strings.Join(current.Scope, " "), "store_path", f.store.Path())
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", current.RefreshToken)
@@ -130,13 +135,16 @@ func (f *Flow) Refresh(ctx context.Context) (*tokens.Token, error) {
 	if f.cfg.ClientSecret != "" {
 		form.Set("client_secret", f.cfg.ClientSecret)
 	}
+	form.Set("scope", "offline")
 	token, err := f.postToken(ctx, form)
 	if err != nil {
+		debuglog.Error("refresh token request failed", "error", err)
 		return nil, err
 	}
 	if err := f.store.Save(token); err != nil {
 		return nil, err
 	}
+	debuglog.Info("access token refresh completed", "expires_at", token.ExpiresAt.UTC().Format(time.RFC3339), "scopes", strings.Join(token.Scope, " "))
 	return token, nil
 }
 
@@ -146,46 +154,58 @@ func (f *Flow) Logout(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if current != nil && current.RefreshToken != "" {
-		form := url.Values{}
-		form.Set("token", current.RefreshToken)
-		form.Set("token_type_hint", "refresh_token")
-		form.Set("client_id", f.cfg.ClientID)
-		if f.cfg.ClientSecret != "" {
-			form.Set("client_secret", f.cfg.ClientSecret)
-		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, f.revokeEndpoint(), strings.NewReader(form.Encode()))
-		if err == nil {
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if current != nil && current.AccessToken != "" && strings.TrimSpace(f.cfg.APIBaseURL) != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, f.revokeAccessEndpoint(), nil)
+		if err != nil {
+			debuglog.Warn("failed to build revoke request", "error", err)
+		} else {
+			req.Header.Set("Authorization", "Bearer "+current.AccessToken)
+			req.Header.Set("Accept", "application/json")
 			resp, httpErr := f.httpClient.Do(req)
-			if httpErr == nil {
-				resp.Body.Close()
+			if httpErr != nil {
+				debuglog.Warn("revoke request failed", "error", httpErr)
+			} else {
+				body := ioReadLimited(resp.Body)
+				_ = resp.Body.Close()
+				if resp.StatusCode/100 == 2 {
+					debuglog.Info("remote access revoked", "status", resp.Status)
+				} else {
+					debuglog.Warn("remote revoke returned non-success", "status", resp.Status, "body", strings.TrimSpace(body))
+				}
 			}
 		}
 	}
+	debuglog.Info("clearing local tokens", "store_path", f.store.Path())
 	return f.store.Clear()
 }
 
 func (f *Flow) postToken(ctx context.Context, form url.Values) (*tokens.Token, error) {
+	grantType := form.Get("grant_type")
+	debuglog.Debug("sending token request", "grant_type", grantType, "endpoint", f.tokenEndpoint())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, f.tokenEndpoint(), strings.NewReader(form.Encode()))
 	if err != nil {
+		debuglog.Error("failed to build token request", "grant_type", grantType, "error", err)
 		return nil, fmt.Errorf("build token request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := f.httpClient.Do(req)
 	if err != nil {
+		debuglog.Error("token request transport error", "grant_type", grantType, "error", err)
 		return nil, fmt.Errorf("execute token request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
 		body := ioReadLimited(resp.Body)
+		debuglog.Error("token request returned non-success", "grant_type", grantType, "status", resp.Status, "body", strings.TrimSpace(body))
 		return nil, fmt.Errorf("token request failed: %d %s: %s", resp.StatusCode, resp.Status, body)
 	}
 	var payload tokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		debuglog.Error("failed to decode token response", "grant_type", grantType, "error", err)
 		return nil, fmt.Errorf("decode token response: %w", err)
 	}
 	if payload.AccessToken == "" || payload.RefreshToken == "" {
+		debuglog.Error("token response missing required fields", "grant_type", grantType, "has_access_token", payload.AccessToken != "", "has_refresh_token", payload.RefreshToken != "")
 		return nil, errors.New("token response missing access or refresh token")
 	}
 	expiresIn := payload.ExpiresIn
@@ -194,13 +214,15 @@ func (f *Flow) postToken(ctx context.Context, form url.Values) (*tokens.Token, e
 	}
 	expiresAt := f.now().Add(time.Duration(expiresIn) * time.Second)
 	scope := strings.Fields(payload.Scope)
-	return &tokens.Token{
+	token := &tokens.Token{
 		AccessToken:  payload.AccessToken,
 		RefreshToken: payload.RefreshToken,
 		TokenType:    payload.TokenType,
 		Scope:        scope,
 		ExpiresAt:    expiresAt,
-	}, nil
+	}
+	debuglog.Info("token request succeeded", "grant_type", grantType, "expires_in", expiresIn, "expires_at", expiresAt.UTC().Format(time.RFC3339), "scope", payload.Scope, "token_type", payload.TokenType)
+	return token, nil
 }
 
 type tokenResponse struct {
@@ -213,7 +235,6 @@ type tokenResponse struct {
 
 func ioReadLimited(body io.Reader) string {
 	const limit = 4 * 1024
-	buf := make([]byte, limit)
-	n, _ := body.Read(buf)
-	return string(buf[:n])
+	data, _ := io.ReadAll(io.LimitReader(body, limit))
+	return string(data)
 }

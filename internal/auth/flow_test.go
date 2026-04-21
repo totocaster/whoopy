@@ -94,6 +94,7 @@ func TestRefreshUsesStoredToken(t *testing.T) {
 		require.Equal(t, "/oauth2/token", r.URL.Path)
 		require.Equal(t, "refresh_token", r.Form.Get("grant_type"))
 		require.Equal(t, "old-refresh", r.Form.Get("refresh_token"))
+		require.Equal(t, "offline", r.Form.Get("scope"))
 		wasRefresh = true
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(tokenResp))
@@ -150,6 +151,9 @@ func TestExchangeCodeErrorIncludesBody(t *testing.T) {
 
 func TestLogoutClearsStoreEvenIfRevokeFails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodDelete, r.Method)
+		require.Equal(t, "/user/access", r.URL.Path)
+		require.Equal(t, "Bearer access", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(server.Close)
@@ -158,6 +162,7 @@ func TestLogoutClearsStoreEvenIfRevokeFails(t *testing.T) {
 		ClientID:     "client",
 		ClientSecret: "secret",
 		OAuthBaseURL: server.URL,
+		APIBaseURL:   server.URL,
 	}
 	store, err := tokens.NewStore(filepath.Join(t.TempDir(), "tokens.json"))
 	require.NoError(t, err)

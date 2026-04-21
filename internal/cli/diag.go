@@ -57,6 +57,7 @@ var diagCmd = &cobra.Command{
 type diagReport struct {
 	Config diagConfigInfo `json:"config"`
 	Tokens diagTokenInfo  `json:"tokens"`
+	Logs   diagLogInfo    `json:"logs"`
 	API    diagAPIInfo    `json:"api"`
 }
 
@@ -84,6 +85,13 @@ type diagTokenInfo struct {
 	Error           string   `json:"error,omitempty"`
 }
 
+type diagLogInfo struct {
+	Path         string `json:"path,omitempty"`
+	Exists       bool   `json:"exists"`
+	LastModified string `json:"last_modified,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
 type diagAPIInfo struct {
 	Status     string `json:"status"`
 	LatencyMS  int64  `json:"latency_ms,omitempty"`
@@ -95,6 +103,7 @@ type diagAPIInfo struct {
 func gatherDiagnostics(ctx context.Context) (*diagReport, error) {
 	cfgInfo := gatherConfigInfo()
 	tokenInfo := gatherTokenInfo()
+	logInfo := gatherLogInfo()
 
 	apiInfo := diagAPIInfo{APIBaseURL: cfgInfo.APIBaseURL}
 	if latency, err := diagHealthCheckFn(ctx); err != nil {
@@ -109,6 +118,7 @@ func gatherDiagnostics(ctx context.Context) (*diagReport, error) {
 	return &diagReport{
 		Config: cfgInfo,
 		Tokens: tokenInfo,
+		Logs:   logInfo,
 		API:    apiInfo,
 	}, nil
 }
@@ -182,6 +192,23 @@ func gatherTokenInfo() diagTokenInfo {
 	return info
 }
 
+func gatherLogInfo() diagLogInfo {
+	info := diagLogInfo{}
+	path, err := paths.DebugLogFile()
+	if err != nil {
+		info.Error = err.Error()
+		return info
+	}
+	info.Path = path
+	if stat, err := os.Stat(path); err == nil {
+		info.Exists = true
+		info.LastModified = stat.ModTime().UTC().Format(time.RFC3339)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		info.Error = fmt.Sprintf("stat debug log: %v", err)
+	}
+	return info
+}
+
 func defaultDiagHealthCheck(ctx context.Context) (time.Duration, error) {
 	client, err := apiClientFactory()
 	if err != nil {
@@ -242,6 +269,16 @@ func formatDiagText(report *diagReport) string {
 	fmt.Fprintf(&b, "  Refresh Token Stored: %s\n", formatBool(report.Tokens.HasRefreshToken))
 	if report.Tokens.Error != "" {
 		fmt.Fprintf(&b, "  Error: %s\n", report.Tokens.Error)
+	}
+
+	fmt.Fprintf(&b, "\nLogs\n")
+	fmt.Fprintf(&b, "  Path: %s\n", safeValue(report.Logs.Path))
+	fmt.Fprintf(&b, "  Exists: %s\n", formatBool(report.Logs.Exists))
+	if report.Logs.LastModified != "" {
+		fmt.Fprintf(&b, "  Last Modified: %s\n", report.Logs.LastModified)
+	}
+	if report.Logs.Error != "" {
+		fmt.Fprintf(&b, "  Error: %s\n", report.Logs.Error)
 	}
 
 	fmt.Fprintf(&b, "\nAPI\n")

@@ -14,6 +14,7 @@ import (
 
 	"github.com/toto/whoopy/internal/auth"
 	"github.com/toto/whoopy/internal/config"
+	"github.com/toto/whoopy/internal/debuglog"
 	"github.com/toto/whoopy/internal/tokens"
 )
 
@@ -135,7 +136,8 @@ func (c *Client) do(
 
 		if resp.StatusCode == http.StatusUnauthorized && !refreshed {
 			resp.Body.Close()
-			token, err = c.forceRefresh(ctx)
+			debuglog.Warn("api request returned unauthorized; attempting token refresh", "path", path)
+			token, err = c.forceRefresh(ctx, token.AccessToken)
 			if err != nil {
 				return nil, err
 			}
@@ -146,6 +148,7 @@ func (c *Client) do(
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < c.max429 {
 			resp.Body.Close()
 			delay := c.backoff(attempt)
+			debuglog.Warn("api request hit rate limit; backing off", "path", path, "attempt", attempt+1, "delay", delay.String())
 			if err := c.sleepFn(ctx, delay); err != nil {
 				return nil, err
 			}
@@ -155,6 +158,7 @@ func (c *Client) do(
 		if resp.StatusCode >= 400 {
 			bodyText := readLimited(resp.Body)
 			resp.Body.Close()
+			debuglog.Error("api request failed", "path", path, "status", resp.Status, "body", bodyText)
 			return nil, fmt.Errorf("whoopy api error %d %s: %s", resp.StatusCode, http.StatusText(resp.StatusCode), bodyText)
 		}
 
@@ -190,7 +194,8 @@ func (c *Client) ensureValidToken(ctx context.Context) (*tokens.Token, error) {
 		c.token = token
 	}
 
-	if time.Until(c.token.ExpiresAt) <= tokenRefreshLeeway {
+	if !c.token.ExpiresAt.IsZero() && c.now().Add(tokenRefreshLeeway).After(c.token.ExpiresAt) {
+		debuglog.Info("refreshing token before request due to expiry window", "expires_at", c.token.ExpiresAt.UTC().Format(time.RFC3339))
 		token, err := c.refresher.Refresh(ctx)
 		if err != nil {
 			return nil, err
@@ -201,9 +206,15 @@ func (c *Client) ensureValidToken(ctx context.Context) (*tokens.Token, error) {
 	return c.token, nil
 }
 
-func (c *Client) forceRefresh(ctx context.Context) (*tokens.Token, error) {
+func (c *Client) forceRefresh(ctx context.Context, usedAccessToken string) (*tokens.Token, error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
+
+	if c.token != nil && c.token.AccessToken != "" && c.token.AccessToken != usedAccessToken {
+		debuglog.Info("skipping duplicate refresh; another request already rotated the token", "expires_at", c.token.ExpiresAt.UTC().Format(time.RFC3339))
+		return c.token, nil
+	}
+
 	token, err := c.refresher.Refresh(ctx)
 	if err != nil {
 		return nil, err

@@ -43,9 +43,15 @@ func runCLICommandWithError(t *testing.T, args []string, input string) (string, 
 
 func setTestConfigDir(t *testing.T) {
 	t.Helper()
-	dir := filepath.Join(t.TempDir(), "whoopy")
-	paths.SetConfigDirOverride(dir)
-	t.Cleanup(func() { paths.SetConfigDirOverride("") })
+	root := t.TempDir()
+	configDir := filepath.Join(root, "config", "whoopy")
+	stateDir := filepath.Join(root, "state", "whoopy")
+	paths.SetConfigDirOverride(configDir)
+	paths.SetStateDirOverride(stateDir)
+	t.Cleanup(func() {
+		paths.SetConfigDirOverride("")
+		paths.SetStateDirOverride("")
+	})
 }
 
 func getConfigDir(t *testing.T) string {
@@ -55,8 +61,19 @@ func getConfigDir(t *testing.T) string {
 	return dir
 }
 
+func getStateDir(t *testing.T) string {
+	t.Helper()
+	dir, err := paths.StateDir()
+	require.NoError(t, err)
+	return dir
+}
+
 func resetCommandFlags(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		_ = f.Value.Set(f.DefValue)
+		f.Changed = false
+	})
+	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
 		_ = f.Value.Set(f.DefValue)
 		f.Changed = false
 	})
